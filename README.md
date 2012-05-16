@@ -2,6 +2,7 @@ CS143-Project-2
 ===============
 
 May 16 2012 By Xin Wei
+ - Added psuedocode for BtLeafNode::insert
  - Added constructor declaration to BTreeNode.h for both BTLeafNode and BtNonLeafNode
  - Added private members sizeRec and sizeTot (for the size of each record/slot, and the total size)
 	to both BtLeafNode and BtNonLeafNode
