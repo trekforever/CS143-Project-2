@@ -18,6 +18,9 @@
  */
 class BTLeafNode {
   public:
+	
+	//Constructor to allocate memory
+	BTLeafNode();
    /**
     * Insert the (key, rid) pair to the node.
     * Remember that all keys inside a B+tree node should be kept sorted.
@@ -102,6 +105,10 @@ class BTLeafNode {
     * that contains the node.
     */
     char buffer[PageFile::PAGE_SIZE];
+	
+	//Customized Variables
+	int sizeRec;	// Size for each record
+	int sizeTot;	// Total Size	
 }; 
 
 
@@ -110,6 +117,10 @@ class BTLeafNode {
  */
 class BTNonLeafNode {
   public:
+
+	//Constructor to allocate memory
+	BTNonLeafNode();
+
    /**
     * Insert a (key, pid) pair to the node.
     * Remember that all keys inside a B+tree node should be kept sorted.
@@ -180,6 +191,11 @@ class BTNonLeafNode {
     * that contains the node.
     */
     char buffer[PageFile::PAGE_SIZE];
+
+//Customized Variables
+	int sizeRec;	// Size for each record
+	int sizeTot;	// Total Size	
+
 }; 
 
 #endif /* BTNODE_H */
