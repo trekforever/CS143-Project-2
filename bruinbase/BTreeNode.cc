@@ -98,19 +98,19 @@ RC BTLeafNode::locate(int searchKey, int& eid)
 	//Create a char pointer that points to the first element in buffer
 	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the first element
 	int tempStorage = 0;
-	int tempEid = 0;
+	int IndexCursor = 0;
 	
 	while(pointer!=NULL)
 	{
 		memcpy(&tempStorage, pointer, sizeof(int));	//Copy it to temp storage for comparison
 		if(tempStorage >= searchKey)
 		{
-			eid = tempEid;
+			eid = IndexCursor;
 			return 0;
 		}
 		else
 		{
-			tempEid++;	//Increment entry number
+			IndexCursor++;	//Increment entry number
 			pointer += sizeRec;	// Goes to the next record/key pair and compare again
 		}
 		// If we still don't find it at this point
@@ -130,16 +130,16 @@ RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid)
 { 
 	// [Done - Needs checking. Jon?]
 	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the first element
-	int tempEid = 0;
+	int IndexCursor = 0;
 
 	pointer += sizeof(PageId);	//First pageID
 	while(pointer != NULL)
 	{
-		if(tempEid >= eid)
+		if(IndexCursor >= IndexCursor)
 			break;
 		else{			// Traverse through the PageIds to find the corresponding eid
 			pointer += sizeRec;
-			tempEid++;
+			IndexCursor++;
 		}
 	}
 	if(pointer == NULL)
