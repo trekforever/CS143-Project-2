@@ -2,6 +2,21 @@
 
 using namespace std;
 
+
+// Constructor to allocate memory
+BTLeafNode::BTLeafNode()
+{ // [Done - Needs checking. Jon?] 
+	// We use the 1024 byte array member variable buffer and set it initially to 0
+	// Note the PageFile::PAGE_SIZE is simply the size of the buffer array defined
+	// in the header file which is 1024 bytes
+
+	memset(buffer,0,PageFile::PAGE_SIZE);
+
+	// Global variables
+	sizeTot = getKeyCount() * sizeRec;	//Size of each record
+	sizeRec = sizeof(RecordId) + sizeof(int);	// Total Size
+}
+
 /*
  * Read the content of the node from the page pid in the PageFile pf.
  * @param pid[IN] the PageId to read
@@ -9,8 +24,11 @@ using namespace std;
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::read(PageId pid, const PageFile& pf)
-{ return 0; }
-    
+{ // [Done - Needs checking. Jon?] 
+	//Using RC PageFile::Read (defined in PageFile Class)
+	return pf.read(pid, buffer);
+ }
+   
 /*
  * Write the content of the node to the page pid in the PageFile pf.
  * @param pid[IN] the PageId to write to
@@ -18,14 +36,28 @@ RC BTLeafNode::read(PageId pid, const PageFile& pf)
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::write(PageId pid, PageFile& pf)
-{ return 0; }
+{ // [Done - Needs checking. Jon?] 
+	//Using RC PageFile::Write (again defined in PageFile Class)
+	// The write function of PageFile automatically expands to include
+	// a new page if the pid goes past the last page, so I think
+	// we don't need to do any error checking for that?
+	return pf.write(pid, buffer);
+}
 
 /*
  * Return the number of keys stored in the node.
  * @return the number of keys in the node
  */
 int BTLeafNode::getKeyCount()
-{ return 0; }
+{ 
+	// PsuedoCode:
+	// Each of our key is a int, so we can use sizeof(int) to determine
+	// the number of bytes. Then couldn't we just get that number of bytes
+	// from the buffer array, and shouldn't that just be the # of records?
+	int tempStorage = 0;	
+	memcpy(&tempStorage, &buffer, sizeof(int));
+	return tempStorage;
+}
 
 /*
  * Insert a (key, rid) pair to the node.
@@ -59,7 +91,33 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::locate(int searchKey, int& eid)
-{ return 0; }
+{ // [Done - Needs checking. Jon?]
+	// We want to traverse through the memory buffer array
+	// to find a key that is >= searchKey
+
+	//Create a char pointer that points to the first element in buffer
+	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the first element
+	int tempStorage = 0;
+	int tempEid = 0;
+	
+	while(pointer!=NULL)
+	{
+		memcpy(&tempStorage, pointer, sizeof(int));	//Copy it to temp storage for comparison
+		if(tempStorage >= searchKey)
+		{
+			eid = tempEid;
+			return 0;
+		}
+		else
+		{
+			tempEid++;	//Increment entry number
+			pointer += sizeRec;	// Goes to the next record/key pair and compare again
+		}
+		// If we still don't find it at this point
+		return RC_NO_SUCH_RECORD;
+		
+	}
+}
 
 /*
  * Read the (key, rid) pair from the eid entry.
@@ -69,14 +127,48 @@ RC BTLeafNode::locate(int searchKey, int& eid)
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid)
-{ return 0; }
+{ 
+	// [Done - Needs checking. Jon?]
+	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the first element
+	int tempEid = 0;
+
+	pointer += sizeof(PageId);	//First pageID
+	while(pointer != NULL)
+	{
+		if(tempEid >= eid)
+			break;
+		else{			// Traverse through the PageIds to find the corresponding eid
+			pointer += sizeRec;
+			tempEid++;
+		}
+	}
+	if(pointer == NULL)
+	{
+		//Didn't find what we were looking for
+		return RC_END_OF_TREE;
+	}
+	else{
+		//Found it!
+		memcpy(&key, pointer, sizeof(int));	//Copy the key value from array to output
+		pointer += sizeof(int);	// Goes to the record
+		memcpy(&rid, pointer, sizeof(RecordId));	//Copy the recordId to output
+		return 0;
+	}
+}
 
 /*
  * Return the pid of the next slibling node.
  * @return the PageId of the next sibling node 
  */
 PageId BTLeafNode::getNextNodePtr()
-{ return 0; }
+{ 
+	// [Done - Needs checking. Jon?]
+	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the first element
+	
+	PageId nextPage;
+	memcpy(&nextPage, pointer, sizeof(PageId));
+	return nextPage;
+}
 
 /*
  * Set the pid of the next slibling node.
@@ -87,13 +179,38 @@ RC BTLeafNode::setNextNodePtr(PageId pid)
 { return 0; }
 
 /*
+ *
+ *
+ * NON-LEAF-NODE
+ *
+ *
+ */
+
+//Constructor to allocate memory, copied from the LeafNode Constructor
+BTNonLeafNode::BTNonLeafNode()
+{ // [Done - Needs checking. Jon?] 
+	// We use the 1024 byte array member variable buffer and set it initially to 0
+	// Note the PageFile::PAGE_SIZE is simply the size of the buffer array defined
+	// in the header file which is 1024 bytes
+
+	memset(buffer,0,PageFile::PAGE_SIZE);
+
+	// Global variables
+	sizeTot = getKeyCount() * sizeRec;	//Size of each record
+	sizeRec = sizeof(RecordId) + sizeof(int);	// Total Size
+}
+
+/*
  * Read the content of the node from the page pid in the PageFile pf.
  * @param pid[IN] the PageId to read
  * @param pf[IN] PageFile to read from
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTNonLeafNode::read(PageId pid, const PageFile& pf)
-{ return 0; }
+{ // [Done - Needs checking. Jon?] 
+	//Using RC PageFile::Read (defined in PageFile Class)
+	return pf.read(pid, buffer);
+ }
     
 /*
  * Write the content of the node to the page pid in the PageFile pf.
@@ -102,7 +219,14 @@ RC BTNonLeafNode::read(PageId pid, const PageFile& pf)
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTNonLeafNode::write(PageId pid, PageFile& pf)
-{ return 0; }
+{ 
+	// [Done - Needs checking. Jon?] 
+	//Using RC PageFile::Write (again defined in PageFile Class)
+	// The write function of PageFile automatically expands to include
+	// a new page if the pid goes past the last page, so I think
+	// we don't need to do any error checking for that?
+	return pf.write(pid, buffer);
+}
 
 /*
  * Return the number of keys stored in the node.
@@ -152,4 +276,16 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2)
-{ return 0; }
+{ 
+	// [Done - Needs checking. Jon?] 
+	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the 1st element
+	
+	memcpy(pointer, &pid1, sizeof(PageId));	//Initialize first pageId
+	pointer += sizeof(PageId);	// Increment by that amount
+	memcpy(pointer, &key, sizeof(int));	//Initialize the key
+	pointer += sizeof(int);	//Increment by that amount again
+	memcpy(pointer, &pid2, sizeof(PageId));	//Create the 2nd PageId to insert behind the key
+	
+	return 0;
+
+ }
