@@ -66,7 +66,25 @@ int BTLeafNode::getKeyCount()
  * @return 0 if successful. Return an error code if the node is full.
  */
 RC BTLeafNode::insert(int key, const RecordId& rid)
-{ return 0; }
+{ 
+	//PUSEDOCODE
+	/*
+	* Check to see if the leaf node is full. If so return RC_NODE_FULL.
+	* First want to iterate/traverse through the entire tree, and find the location to insert.
+	* If node is initially empty or 0, good! Otherwise increment pointer until we find a value
+	* that is greater than the key. Store the eid into a variable.
+	* Now check the buffer array. We need to shift everything down.
+	* So allocate a new temp buffer array with the new size.
+	* memcpy everything before the insertion point to temp buffer.
+	* now insert our new value to the temp buffer.
+	* insert everything after that to the temp buffer.
+	* now memcpy the array back to pointer.
+	* free our temp variable.
+	* and set our new key count.
+	* simply getKeyCount()++ and store it back into the pointer array.
+	*/
+
+return 0; }
 
 /*
  * Insert the (key, rid) pair to the node
