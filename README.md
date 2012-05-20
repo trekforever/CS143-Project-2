@@ -1,6 +1,12 @@
 CS143-Project-2
 ===============
 
+May 19, 2012 By Xin Wei
+ - Fixed a few bugs and typos.
+ - Implemented BTLeafNode::insert (ohy took me hours!)
+ - Implemented BTNonLeafNode::GetKeyCount()
+ - Implemented BTNonLeafNode::locatechildptr
+
 May 16 2012 By Xin Wei
  - Added psuedocode for BtLeafNode::insert
  - Added constructor declaration to BTreeNode.h for both BTLeafNode and BtNonLeafNode
