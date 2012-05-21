@@ -1,6 +1,10 @@
 CS143-Project-2
 ===============
 
+May 21, 2012 By Xin Wei
+ - Fixed memory errors and typos
+ - Implemented BTNonLeafNode::Insert
+
 May 19, 2012 By Xin Wei
  - Fixed a few bugs and typos.
  - Implemented BTLeafNode::insert (ohy took me hours!)
