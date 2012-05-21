@@ -171,13 +171,8 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
  */
 RC BTLeafNode::insertAndSplit(int key, const RecordId& rid, 
                               BTLeafNode& sibling, int& siblingKey)
-<<<<<<< HEAD
-{ 
-		// Define the leaf entry size and the maximum leaf entires
-=======
-{  
+{ 	/*// Define the leaf entry size and the maximum leaf entires 
 	// Define the leaf entry size and the maximum leaf entires
->>>>>>> New attempt at InsertAndSplit
 	int leafSize= sizeof(RecordId) + sizeof(int);
 	int maxLeafEntries = (PageFile::PAGE_SIZE - sizeof(PageId)) / leafSize;
 
@@ -217,11 +212,7 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
 	else
 		insert(key,rid);
 
-    return 0;
-<<<<<<< HEAD
-
-=======
->>>>>>> New attempt at InsertAndSplit
+    return 0;*/
 }
 
 /*
