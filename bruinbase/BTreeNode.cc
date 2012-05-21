@@ -1,11 +1,13 @@
 #include "BTreeNode.h"
+#include <iostream>	//Debugging purpsoes
+//See BTreeNode.h for various other information, also the readme as well.
 
 using namespace std;
 
-
 // Constructor to allocate memory
 BTLeafNode::BTLeafNode()
-{	// [Done. Checked.]
+{	
+	// [Done. Checked.]
 	// We use the 1024 byte array member variable buffer and set it initially to 0
 	// Note the PageFile::PAGE_SIZE is simply the size of the buffer array defined
 	// in the header file which is 1024 bytes
@@ -13,8 +15,24 @@ BTLeafNode::BTLeafNode()
 	memset(buffer,0,PageFile::PAGE_SIZE);
 
 	// Global variables
+	/*	__________
+	 *     |key,value |
+	 *     |key,value |
+	 *     |key,value |
+	 *      ----------- => sizeRec */
 	sizeRec = getKeyCount() * sizeRec;	//Size of each record
-	sizeTot = sizeof(RecordId) + sizeof(int);	// Total Size
+	//cout << "Record Size: " << sizeRec << endl;
+	sizeTot = sizeof(RecordId) + sizeof(int);	// Total Size of a leafnode
+	//cout << "Total Size: " << sizeTot << endl;
+	//count << "Current Key Count: " << getKeyCount() << endl;
+
+	/*
+	*	Example of Buffer Layout
+	*	[First 4 bytes:sizeof(int)]	[sizeof(PageId)]	[sizeRec)] 		[sizeof(int)]
+	*	[Key Count]			[First PageId]		[First RecordId]	[key]
+	*
+	*
+	*/
 }
 
 /*
@@ -24,8 +42,9 @@ BTLeafNode::BTLeafNode()
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::read(PageId pid, const PageFile& pf)
-{	// [Done. Checked.]
-	//Using RC PageFile::Read (defined in PageFile Class)
+{	
+	// [Done. Checked.]
+	// Using RC PageFile::Read (defined in PageFile Class)
 	return pf.read(pid, buffer);
  }
    
@@ -36,8 +55,9 @@ RC BTLeafNode::read(PageId pid, const PageFile& pf)
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::write(PageId pid, PageFile& pf)
-{	// [Done. Checked.]
-	//Using RC PageFile::Write (again defined in PageFile Class)
+{	
+	// [Done. Checked.]
+	// Using RC PageFile::Write (again defined in PageFile Class)
 	// The write function of PageFile automatically expands to include
 	// a new page if the pid goes past the last page, so I think
 	// we don't need to do any error checking for that?
@@ -51,11 +71,13 @@ RC BTLeafNode::write(PageId pid, PageFile& pf)
 int BTLeafNode::getKeyCount()
 {	// [Done. Checked.]
 	// PsuedoCode:
-	// Each of our key is a int, so we can use sizeof(int) to determine
+	// Each of our key is an int, so we can use sizeof(int) to determine
 	// the number of bytes. Then couldn't we just get that number of bytes
 	// from the buffer array, and shouldn't that just be the # of records?
+	// Note that the first four bytes stores the # of records of a page
 	int tempStorage = 0;	
-	memcpy(&tempStorage, &buffer, sizeof(int));
+	//memcpy(destination,source,size)
+	memcpy(&tempStorage, &buffer, sizeof(int));	//get the first 4 bytes, store it into tempStorage
 	return tempStorage;
 }
 
@@ -83,10 +105,13 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
 	* and set our new key count.
 	* simply getKeyCount()++ and store it back into the pointer array.
 	*/
-
+	//cout << "DEBUG: Attempting to insert " << key << " at Slot# " << rid.sid << "and PageId# " << rid.pid << endl;
 	//Need error checking, check to see if node is full
+	int tempSize = PageFile::PAGE_SIZE - sizeRec - sizeof(int) - sizeof(PageId);
+	if(sizeTot >= tempSize)
+		return RC_NODE_FULL;	//Full node when total size exceeds the size of we have
 	//cout << "Current Key Counts: " << getKeyCount() << endl;
-	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the first element
+	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the first element, skipping count
 	pointer += sizeof(PageId); //First PageID
 	int IndexCursor = 0;
 	int tempStorage = 0;
@@ -94,27 +119,32 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
 	if(pointer!=NULL)
 		memcpy(&tempStorage, pointer, sizeof(int));	//Copy it to temp storage for comparison. Initial.
 
-	while(pointer!=NULL && tempStorage < key)
+	while(pointer!=NULL && tempStorage < key)	//Find the key that is right before our insertion point
 	{
 		memcpy(&tempStorage, pointer, sizeof(int));	//Copy it to temp storage for comparison
 		pointer += sizeRec;	//Goes to the next record
 		IndexCursor++;
+		//Should exit once tempStorage >= Key. Do we need to check when tempStorage = 0?
+		//Let's do it just *incase
+		if(tempStorage==0)
+			break;	//break out of while loop. Haven't tested to see if this line works/is needed.
 	}
-
+	//Now we found the location to insert ...
 	//Shifting everything down by storing into temp buffer
-	size_t newSize = PageFile::PAGE_SIZE * sizeof(char);
-	char* tempBuffer = (char*) malloc(newSize);
-	memset(tempBuffer,0,sizeTot - (sizeRec*IndexCursor));
+	size_t newSize = PageFile::PAGE_SIZE * sizeof(char);	//Size of buffer
+	char* tempBuffer = (char*) malloc(newSize);	//Allocate new buffer
+	memset(tempBuffer,0,sizeTot - (sizeRec*IndexCursor));	//set new buffer to all 0s initially
 	if(tempStorage != 0 && sizeTot > 0)
 	{
 		// copy the data from buffer (pointer) to our tempBuffer, and reallocate/reinitalize our pointer
 		memcpy(tempBuffer, pointer, sizeTot - (sizeRec*IndexCursor));
 		memset(pointer,0,sizeTot - (sizeRec*IndexCursor));
 	}
-	memcpy(pointer,&key,sizeof(int));	//copy new key
+	//Finished copying data to tempBuffer. Now let's insert.
+	memcpy(pointer,&key,sizeof(int));	//copy new key to pointer
 	pointer+=sizeof(int);	//increment pointer position
 	memcpy(pointer,&rid,sizeof(RecordId));	//Copy new record
-	pointer+=sizeof(RecordId);
+	pointer+=sizeof(RecordId);	//increment the record
 	if(tempStorage != 0 && sizeTot > 0)
 	{
 		//Copy the data from tempBuffer back
@@ -122,11 +152,11 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
 	}
 	
 	//Set new count and store it
-	pointer = &buffer[0];	//Goes back to the beginning
+	pointer = &buffer[0];	//Goes back to the beginning to set new keyCount
 	int newCount = getKeyCount() + 1;
 	memcpy(pointer,&(newCount),sizeof(int));
-
-	return 0; //NEEDS ERROR CHECKING
+	free(tempBuffer);
+	return 0; //NEEDS ERROR CHECKING & TESTING
  }
 
 /*
@@ -142,8 +172,9 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
 RC BTLeafNode::insertAndSplit(int key, const RecordId& rid, 
                               BTLeafNode& sibling, int& siblingKey)
 { 
+//Function won't compile - convertToLeafEntry and convertToChar Not defined --Xin
 		// Define the leaf entry size and the maximum leaf entires
-	int leafSize= sizeof(RecordId) + sizeof(int);
+	/*int leafSize= sizeof(RecordId) + sizeof(int);
 	int maxLeafEntries = (PageFile::PAGE_SIZE - sizeof(PageId)) / leafSize;
 	
     // The id of the last before the split
@@ -181,7 +212,7 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
 		sibling.insert(key,rid);
 	else
 		insert(key,rid);
-		
+		*/
     return 0;
 	
 }
@@ -195,12 +226,13 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::locate(int searchKey, int& eid)
-{	// [Done. Checked.]
+{	
+	// [Done. Checked.]
 	// We want to traverse through the memory buffer array
 	// to find a key that is >= searchKey
 
 	//Create a char pointer that points to the first element in buffer
-	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the first element
+	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the first element, skipping the count
 	int tempStorage = 0;
 	int IndexCursor = 0;
 	
@@ -231,7 +263,8 @@ RC BTLeafNode::locate(int searchKey, int& eid)
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid)
-{	// [Almost Done. Need to implement error-checking. Need Testing. Need code review (may have bugs/typos). ] 
+{	
+	// [Done.]
 	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the first element
 	int IndexCursor = 0;
 
@@ -254,7 +287,7 @@ RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid)
 	else{
 		//Found it!
 		memcpy(&key, pointer, sizeof(int));	//Copy the key value from array to output
-		pointer += sizeof(int);	// Goes to the record
+		pointer += sizeof(int);	// Goes to the beginning of the record
 		memcpy(&rid, pointer, sizeof(RecordId));	//Copy the recordId to output
 		return 0;
 	}
@@ -281,10 +314,10 @@ PageId BTLeafNode::getNextNodePtr()
  */
 RC BTLeafNode::setNextNodePtr(PageId pid)
 { 
-	// [Almost Done. Need to implement error-checking. Need Testing. Need code review (may have bugs/typos). ] 
-	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the first element
-	memcpy(pointer,&pid,sizeof(PageId));
-	return 0;
+	// [Done.]
+	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the first element, skipping count
+	memcpy(pointer,&pid,sizeof(PageId));	//Copy PageId to pointer
+	return 0;	//Error Checking Needed
 }
 
 /*
@@ -308,6 +341,7 @@ BTNonLeafNode::BTNonLeafNode()
 	// Global variables
 	sizeRec = getKeyCount() * sizeRec;	//Size of each record
 	sizeTot = sizeof(RecordId) + sizeof(int);	// Total Size
+	//See LeafNode constructor for more information
 }
 
 /*
@@ -348,7 +382,7 @@ int BTNonLeafNode::getKeyCount()
 	// [Done. Checked].
 	//Copied from LeafNode::getKeyCount
 	int tempStorage = 0;	
-	memcpy(&tempStorage, &buffer, sizeof(int));
+	memcpy(&tempStorage, &buffer, sizeof(int));	//First 4 bytes of page is count info
 	return tempStorage;
 }
 
@@ -360,7 +394,65 @@ int BTNonLeafNode::getKeyCount()
  * @return 0 if successful. Return an error code if the node is full.
  */
 RC BTNonLeafNode::insert(int key, PageId pid)
-{ return 0; }
+{
+	//[Done.]
+	//cout << "Key to Insert: " << key << endl;
+	//Similar to the BTLeafNode::insert (to an similar extent) 
+	//So some codes are copied from that function respectively
+	char* pointer = &buffer[0]+sizeof(int)+sizeof(PageId);	//First page
+	//Want to iterate through the pages until we find the one to insert beforehands
+	int IndexCursor = 0;
+	int tempStorage = 0;	//Storage comparison
+	// Need an error checking, check to see if node is full
+	int tempSize = PageFile::PAGE_SIZE - sizeRec;
+	if(sizeTot >= tempSize)
+		return RC_NODE_FULL;	//If our total size exceeds our size, return full
+	if(pointer!=NULL)
+		memcpy(&tempStorage, pointer, sizeof(int));	//Copy it to temp storage for comparison. Initial.
+	while(pointer!=NULL && tempStorage < key)	//Find the key that is right before our insertion point
+	{
+		memcpy(&tempStorage, pointer, sizeof(int));	//Copy it to temp storage for comparison
+		pointer += sizeRec;	//Goes to the next record
+		IndexCursor++;
+		//Should exit once tempStorage >= Key. Do we need to check when tempStorage = 0? Let's just do it just incase.
+		if(tempStorage==0)
+			break;	//Needs testing and checking
+	}
+	
+	if(tempStorage == key)
+	{
+		//Found the key already exist, update pageId. No need to add new key.
+		pointer+=sizeof(int);	//goes to the beginning of pageId
+		memcpy(pointer,&pid,sizeof(PageId));
+	}
+	
+	//Shifting everything down, blah blah blah, same as LeafNode::insert
+	size_t newSize = PageFile::PAGE_SIZE * sizeof(char);
+	char* tempBuffer = (char*) malloc(newSize);
+	memset(tempBuffer,0,sizeTot - (sizeRec*IndexCursor));
+	if(tempStorage != 0 && sizeTot > 0)
+	{
+		// copy the data from buffer (pointer) to our tempBuffer, and reallocate/reinitalize our pointer
+		memcpy(tempBuffer, pointer, sizeTot - (sizeRec*IndexCursor));
+		memset(pointer,0,sizeTot - (sizeRec*IndexCursor));
+	}
+	memcpy(pointer,&key,sizeof(int));	//copy new key
+	pointer+=sizeof(int);	//increment pointer position
+	memcpy(pointer,&pid,sizeof(PageId));	//Copy new pageId
+	pointer+=sizeof(PageId);
+	if(tempStorage != 0 && sizeTot > 0)
+	{	//Valid Data!
+		//Copy the data from tempBuffer back
+		memcpy(pointer,tempBuffer,sizeTot - (sizeRec*IndexCursor));
+	}
+	//Set new count and store it
+	pointer = &buffer[0];	//Goes back to the beginning
+	int newCount = getKeyCount() + 1;	//Increment count
+	memcpy(pointer,&(newCount),sizeof(int));
+	
+	return 0;
+
+}
 
 /*
  * Insert the (key, pid) pair to the node
@@ -384,19 +476,20 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
  */
 RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
 { 
-	// [Almost Done. Need to implement error-checking. Need Testing. Need code review (may have bugs/typos). ] 
+	// [Done. ] 
 	char* pointer = &buffer[0]+sizeof(int);;	//First element
-	int tempStorage = 0;
-	memcpy(&tempStorage, pointer, sizeof(int));
+	int tempStorage = 0;	//storage for comparison
+	memcpy(&tempStorage, pointer, sizeof(int));	//copy first key to tempStorage for comparison. initial
 	while(pointer != NULL && tempStorage < searchKey)
 	{
-		memcpy(&tempStorage, pointer, sizeof(int));
-		pointer+=sizeof(int)+sizeof(sizeRec);
+		memcpy(&tempStorage, pointer, sizeof(int));	//copy first key to tempStorage for comparison. 
+		pointer+=sizeof(int)+sizeRec;
+		//exit once found a key that is >= searchKey
 	}
 	//Located
-	pointer-=sizeof(PageId);	//Back a page
+	pointer-=sizeof(PageId);	//Back a page, want to add before
 	memcpy(&pid,pointer,sizeof(PageId));
-	return 0;
+	return 0;	//Needs ERROR CHECKING
 
 }
 
@@ -409,7 +502,7 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
  */
 RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2)
 { 
-	// [Almost Done. Need to implement error-checking. Need Testing. Need code review (may have bugs/typos). ] 
+	// [Done. Needs Error Checking.]
 	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the 1st element
 	
 	memcpy(pointer, &pid1, sizeof(PageId));	//Initialize first pageId
@@ -417,6 +510,9 @@ RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2)
 	memcpy(pointer, &key, sizeof(int));	//Initialize the key
 	pointer += sizeof(int);	//Increment by that amount again
 	memcpy(pointer, &pid2, sizeof(PageId));	//Create the 2nd PageId to insert behind the key
+	pointer = &buffer[0];	//Modify Count
+	int count = getKeyCount()+1;
+	memcpy(pointer,&count,sizeof(int));	//Incrementing count
 	
 	return 0;
 
