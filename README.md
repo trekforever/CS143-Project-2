@@ -4,6 +4,13 @@ CS143-Project-2
 May 21, 2012 By Xin Wei
  - Fixed memory errors and typos
  - Implemented BTNonLeafNode::Insert
+ - Started on BTreeIndex.h
+	- Added char bufferArr[PageFile::PAGE_SIZE] for buffer in Header (global variable, makes life easier)
+	- Added int height; to keep track of height (needed to determine for leafNode)
+	- Added char method to keep track of mode (needed for close)
+ - For BTreeIndex.cc
+	- Implemented the Open Method
+	- Implemented the Close Method
 
 May 19, 2012 By Xin Wei
  - Fixed a few bugs and typos.

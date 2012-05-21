@@ -171,12 +171,16 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
  */
 RC BTLeafNode::insertAndSplit(int key, const RecordId& rid, 
                               BTLeafNode& sibling, int& siblingKey)
+<<<<<<< HEAD
 { 
-//Function won't compile - convertToLeafEntry and convertToChar Not defined --Xin
 		// Define the leaf entry size and the maximum leaf entires
-	/*int leafSize= sizeof(RecordId) + sizeof(int);
+=======
+{  
+	// Define the leaf entry size and the maximum leaf entires
+>>>>>>> New attempt at InsertAndSplit
+	int leafSize= sizeof(RecordId) + sizeof(int);
 	int maxLeafEntries = (PageFile::PAGE_SIZE - sizeof(PageId)) / leafSize;
-	
+
     // The id of the last before the split
     int spid = (int) (maxLeafEntries / 2 + 1);
 
@@ -187,7 +191,7 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
     for (int x = spid*leafSize; x < maxLeafEntries*leafSize; x += leafSize)
     {
 	    convertToLeafEntry(buffer, x, oKey, oRid);
-	    
+
 	    // Copy entires into sibling
 	    sibling.insert(oKey, oRid);
         
@@ -212,9 +216,12 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
 		sibling.insert(key,rid);
 	else
 		insert(key,rid);
-		*/
+
     return 0;
-	
+<<<<<<< HEAD
+
+=======
+>>>>>>> New attempt at InsertAndSplit
 }
 
 /*
