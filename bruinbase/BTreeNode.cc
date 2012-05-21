@@ -141,7 +141,50 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
  */
 RC BTLeafNode::insertAndSplit(int key, const RecordId& rid, 
                               BTLeafNode& sibling, int& siblingKey)
-{ return 0; }
+{ 
+		// Define the leaf entry size and the maximum leaf entires
+	int leafSize= sizeof(RecordId) + sizeof(int);
+	int maxLeafEntries = (PageFile::PAGE_SIZE - sizeof(PageId)) / leafSize;
+	
+    // The id of the last before the split
+    int spid = (int) (maxLeafEntries / 2 + 1);
+
+	// Create 
+    int oKey, eKey = -1;
+    RecordId oRid, eRid = {-1, -1};
+    
+    for (int x = spid*leafSize; x < maxLeafEntries*leafSize; x += leafSize)
+    {
+	    convertToLeafEntry(buffer, x, oKey, oRid);
+	    
+	    // Copy entires into sibling
+	    sibling.insert(oKey, oRid);
+        
+	    // Assign sibling key
+	    if (x == spid*leafSize)
+	        siblingKey = oKey;
+        
+		// Create a buffer for the leaf
+        char buf[leafSize];
+        convertToChar(eKey, eRid, buf);
+        
+		// Make entry in the leaf empty
+        for (int y = x; y < (x + leafSize); y++)
+            buffer[y] = buf[y-x];
+    }
+    
+    // Set the next pointer for the sibling
+    sibling.setNextNodePtr(getNextNodePtr()); 
+    
+    // Insert the record
+	if (key >= siblingKey)
+		sibling.insert(key,rid);
+	else
+		insert(key,rid);
+		
+    return 0;
+	
+}
 
 /*
  * Find the entry whose key value is larger than or equal to searchKey
