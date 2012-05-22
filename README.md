@@ -1,6 +1,30 @@
 CS143-Project-2
 ===============
+May 21, 2012 by Jonathan Nguy
+ - Retried to implement with other data structures.
+ - Implemented all functions with said structures, including:
+ 	- BTLeafNode::getKeyCount()
+ 	- BTLeafNode::insert
+ 	- BTLeafNode::insertAndSplit
+ 	- BTLeafNode::locate
+ 	- BTLeafNode::readEntry
+ 	- BTLeafNode::getNextNodePtr() // unsure
+ 	- BTLeafNode::setNextNodePtr // unsure
+ 	
+ 	- BTNonLeafNode::getKeyCount()
+ 	- BTNonLeafNode::insert
+ 	- BTNonLeafNode::insertAndSplit
+ 	- BTNonLeafNode::locateChildPtr
+ 	- BTNonLeafNode::initializeRoot
 
+ - Still need to fix possible errors
+ - Compiles correctly
+ - Added private struct NonLeaf (contains a key and a pointer to the next pid).
+ 	- Design is similar to the picture on the assignment page
+ - Added private variable sizeMax, which is
+ 	- Maximum leaf entries (for leafNode)
+ 	- Maximum nonLeaf structs.
+ 
 May 21, 2012 By Xin Wei
  - Fixed memory errors and typos
  - Implemented BTNonLeafNode::Insert

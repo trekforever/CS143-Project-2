@@ -14,9 +14,6 @@
 #include "PageFile.h"
 #include <iostream> //Debugging Purposes
 
-#define EMPTY -1 // This is to determine is an entry is empty.
-#define PTROFFSET 255
-
 /**
  * BTLeafNode: The class representing a B+tree leaf node.
  */
@@ -110,22 +107,10 @@ class BTLeafNode {
     */
     char buffer[PageFile::PAGE_SIZE];
 	
-    //Customized Variables
+	//Customized Variables
 	int sizeRec;	// Size for each record
-	int sizeTot;	// Total size of a record
-    int sizeMax;    // Maximum leaf entries
+	int sizeTot;	// Total Size	
 }; 
-
-
-
-
-
-
-
-
-
-
-
 
 
 /**
@@ -210,16 +195,7 @@ class BTNonLeafNode {
 
 //Customized Variables
 	int sizeRec;	// Size for each record
-	int sizeTot;	// Total size of a record
-    int sizeMax;    // Max NonLeaf structs
-    
-    // A struct for each element in a nonleafnode.
-    // "Next" is a pointer to the next PageId
-    // This is going to be the main data structure we work with.
-    typedef struct{
-        int key;
-        PageId next;
-    } NonLeaf;
+	int sizeTot;	// Total Size	
 
 }; 
 
