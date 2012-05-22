@@ -17,7 +17,7 @@ using namespace std;
  */
 BTreeIndex::BTreeIndex()
 {
-    rootPid = -1;
+    	rootPid = -1;
 	height = 0;	//initially 0 count. Needed to know whether reached leaf level
 }
 
@@ -112,7 +112,31 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
  */
 RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
 {
-    return 0;
+	//Base case is when height is 0 or 1
+    	if(height==0)
+	{
+		rootPid = 1;
+		cursor.pid = 1;
+		cursor.eid = 0;
+		height++;
+	}
+	if(height==1)
+	{
+		int indexCursor = 0;
+		BTLeafNode temp;
+		if(temp.read(rootPid,pf) != 0)
+			return RC_FILE_READ_FAILED;	//Unable to read
+		if(temp.locate(searchKey,indexCursor) != 0)
+			return RC_NO_SUCH_RECORD;	//Unable to find
+		//Found and stored in IndexCusor
+		cursor.pid = rootPid;
+		cursor.eid = indexCursor;
+	}
+	else
+	{
+		//TODO: Implement for height > 1
+	}
+	return 0;
 }
 
 /*
@@ -125,5 +149,40 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
  */
 RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
 {
+	//Create a new node and attempt to fill this empty temp with some
+	//useful information by reading it from cursor
+	BTLeafNode temp;
+
+	//Reading error checks
+	if(temp.read(cursor.pid, pf) != 0)
+	{
+		//Error in reading page
+		return RC_FILE_READ_FAILED;
+	}
+	else
+		//Store key and rid into the output value given the input eid
+		temp.readEntry(cursor.eid, key, rid);	
+
+	//If you get here, we now want to move the cursor to the next entry
+	if(cursor.eid >= temp.getKeyCount() - 1)
+	{
+		cursor.eid = 0;
+		int next = temp.getNextNodePtr();
+		if(next == 0)
+			return RC_END_OF_TREE;	//Next node is 0, empty tree
+		else
+		{
+			cursor.pid = next;	//set the cursor to our next entry
+			return 0;		
+		}
+	}
+	else
+	{
+		//if our position is less than where it suppose to be at, increment it
+		cursor.eid++;
+		return 0;
+	}
+
+	
     return 0;
 }
