@@ -417,7 +417,10 @@ int BTNonLeafNode::getKeyCount()
     // copy first 4 bytes
     for (int x = 0; x < 4; x++)
         tempBuf[x] = buffer[x];
-    PageId firstPid = (PageId)tempBuf;                              // PID at the beginning
+	
+   // PageId firstPid = (PageId)tempBuf;                              // PID at the beginning
+	PageId firstPid;
+	memcpy(&firstPid, &tempBuf[0], sizeof(PageId));	//Uses memcpy instead of typecasting
     NonLeaf* myNonLeaf = (NonLeaf*)(buffer + sizeof(PageId));    // Start from the first key
     int lim = PageFile::PAGE_SIZE - sizeof(PageId);                 // max number
     
@@ -592,7 +595,9 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
                 // copy first 4 bytes
                 for (int x = 0; x < 4; x++)
                     tempBuf[x] = buffer[x];
-                pid = (PageId)tempBuf;     // PID at the beginning
+                //pid = (PageId)tempBuf;     // PID at the beginning
+		char* pointer = &tempBuf[0];
+		memcpy(&pid,pointer,sizeof(int));	//Uses memcpy instead of casting
             } 
             else
                 pid = (myNonLeaf+x-1)->next;    // Go back one and return the pid
