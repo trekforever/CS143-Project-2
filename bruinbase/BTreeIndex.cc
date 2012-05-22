@@ -9,7 +9,7 @@
  
 #include "BTreeIndex.h"
 #include "BTreeNode.h"
-
+const int GLOBALpsize = PageFile::PAGE_SIZE;
 using namespace std;
 
 /*
@@ -18,6 +18,7 @@ using namespace std;
 BTreeIndex::BTreeIndex()
 {
     rootPid = -1;
+	height = 0;	//initially 0 count. Needed to know whether reached leaf level
 }
 
 /*
@@ -29,7 +30,29 @@ BTreeIndex::BTreeIndex()
  */
 RC BTreeIndex::open(const string& indexname, char mode)
 {
-    return 0;
+	//set variable in class
+	method = mode;
+	//Try to open the pageFile
+	if(pf.open(indexname,mode) != 0)
+		return RC_FILE_OPEN_FAILED;
+
+	//Writing
+	if(method=='w')
+		return 0;
+	else
+	{	
+	//Reading
+		if(pf.read(0, bufferArr)!=0)
+			return RC_FILE_READ_FAILED;	//Unable to read during read mode
+	}
+
+	char* pointer = &bufferArr[0];
+	memcpy(&rootPid,pointer,sizeof(PageId));	//Copy the rootPid from buffer containing the index to output
+	//cout << "Root is " << rootPid << endl;
+	pointer+= sizeof(PageId);
+	memcpy(&height,pointer,sizeof(int));		//Copy height to the beginnning
+	//cout << "Height is " << height << endl;
+    	return 0;
 }
 
 /*
@@ -38,7 +61,23 @@ RC BTreeIndex::open(const string& indexname, char mode)
  */
 RC BTreeIndex::close()
 {
-    return 0;
+	if(method == 'r')
+		return pf.close(); //if reading, we can just close it
+	else
+	{	//Writing Mode
+		char* pointer = &bufferArr[0];
+		//Allocate the pointer to 0 initially
+		memset(pointer,0,GLOBALpsize);
+		//Copy rootPid to our buffer
+		memcpy(pointer,&rootPid, sizeof(PageId));
+		//Increment the pointer (note rootPid is a PageId, so we do sizeof(PageId)
+		pointer+=sizeof(PageId);
+		//Copy the height to there as well)
+		memcpy(pointer,&height,sizeof(int));
+		if(pf.write(0,bufferArr) != 0)	//We write the rootPid and height info to pid 0
+			return RC_FILE_WRITE_FAILED;
+	    	return pf.close();
+	}
 }
 
 /*

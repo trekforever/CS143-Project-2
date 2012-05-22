@@ -99,6 +99,9 @@ class BTreeIndex {
   /// this class is destructed. Make sure to store the values of the two 
   /// variables in disk, so that they can be reconstructed when the index
   /// is opened again later.
+	char bufferArr[PageFile::PAGE_SIZE]; //ACt as buffer. (global variable, makes life easier)
+	int height; //to keep track of height (needed to determine for leafNode)
+	char method; //keep track of mode (needed for close)
 };
 
 #endif /* BTREEINDEX_H */
