@@ -25,9 +25,9 @@ BTLeafNode::BTLeafNode()
     // Size of a record is the size of the record * # of keys?
     
     
-	sizeRec = getKeyCount() * sizeRec;	//Size of each record
+	sizeRec = sizeof(RecordId) + sizeof(int);	//Size of each record
 	//cout << "Record Size: " << sizeRec << endl;
-	sizeTot = sizeof(RecordId) + sizeof(int);	// Total Size of a leafnode
+	sizeTot = getKeyCount() * sizeRec;	// Total Size of a leafnode
 	//cout << "Total Size: " << sizeTot << endl;
 	//cout << "Current Key Count: " << getKeyCount() << endl;
 
@@ -354,8 +354,8 @@ BTNonLeafNode::BTNonLeafNode()
 	memset(buffer,0,PageFile::PAGE_SIZE);
 
 	// Global variables
-	sizeRec = getKeyCount() * sizeRec;	//Size of each record
-	sizeTot = sizeof(RecordId) + sizeof(int);	// Total Size
+	sizeRec = sizeof(RecordId) + sizeof(int);	//Size of each record
+	sizeTot = getKeyCount() * sizeRec;	// Total Size
 	//See LeafNode constructor for more information
 }
 
