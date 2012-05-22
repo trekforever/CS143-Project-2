@@ -420,7 +420,7 @@ int BTNonLeafNode::getKeyCount()
 	
    // PageId firstPid = (PageId)tempBuf;                              // PID at the beginning
 	PageId firstPid;
-	memcpy(&firstPid, &tempBuf[0], sizeof(PageId));	//Uses memcpy instead of typecasting
+	memcpy(&firstPid, &tempBuf[0], sizeof(int));	//Uses memcpy instead of typecasting
     NonLeaf* myNonLeaf = (NonLeaf*)(buffer + sizeof(PageId));    // Start from the first key
     int lim = PageFile::PAGE_SIZE - sizeof(PageId);                 // max number
     
