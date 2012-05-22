@@ -185,7 +185,6 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
  */
 RC BTLeafNode::insertAndSplit(int key, const RecordId& rid, 
                               BTLeafNode& sibling, int& siblingKey)
-<<<<<<< HEAD
 { 
     /* General idea:
      *  Check to see if there's too many nodes.
@@ -204,15 +203,6 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
 	
     // Id of last entry
     int lastPid = sizeMax / 2 + 1;
-=======
-{ 	/*// Define the leaf entry size and the maximum leaf entires 
-	// Define the leaf entry size and the maximum leaf entires
-	int leafSize= sizeof(RecordId) + sizeof(int);
-	int maxLeafEntries = (PageFile::PAGE_SIZE - sizeof(PageId)) / leafSize;
-
-    // The id of the last before the split
-    int spid = (int) (maxLeafEntries / 2 + 1);
->>>>>>> 1e58efde16b3ada76a518a071ab68e61f5c545b8
 
 	// Create a temp key and an empty key, a is temp, b is empty.
     int aKey, bKey = EMPTY;
@@ -221,17 +211,12 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
     // Start from the last entry until the very last
     for (int x = lastPid*sizeTot; x < sizeMax*sizeTot; x += sizeTot)
     {
-<<<<<<< HEAD
         // Get integers from the char buffer
         int* temp = (int*) buffer;              // Your current buffer
         aRid.pid = *(temp + x/sizeof(int));        // Get first int
         aRid.sid = *(temp + x/sizeof(int) + 1);    // 2nd int
         aKey = *(temp + x/sizeof(int) + 2);        // 3rd int
         
-=======
-	    convertToLeafEntry(buffer, x, oKey, oRid);
-
->>>>>>> 1e58efde16b3ada76a518a071ab68e61f5c545b8
 	    // Copy entires into sibling
 	    sibling.insert(aKey, aRid);
         
@@ -258,14 +243,9 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
 		sibling.insert(key,rid);
 	else
 		insert(key,rid);
-<<<<<<< HEAD
 		
     return 0;
 	
-=======
-
-    return 0;*/
->>>>>>> 1e58efde16b3ada76a518a071ab68e61f5c545b8
 }
 
 /*
