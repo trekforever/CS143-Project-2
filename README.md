@@ -1,5 +1,10 @@
 CS143-Project-2
 ===============
+May 26, 2012 by Jonathan Nguy
+ - Reworked typecasting into memcpy's
+ - Read through code to make sure it logically made sense
+ 	- Most/All look good
+
 May 21, 2012 by Jonathan Nguy
  - Retried to implement with other data structures.
  - Implemented all functions with said structures, including:
