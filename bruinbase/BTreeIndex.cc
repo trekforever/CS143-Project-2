@@ -12,13 +12,71 @@
 const int GLOBALpsize = PageFile::PAGE_SIZE;
 using namespace std;
 
+Node::Node(PageId pid) {
+	//Set pid
+	this->pid = pid;
+}
+
+PageId Node::getPid(){
+	//Return pid value
+	return this->pid;
+}
+
+//Linked List Structure
+DoubleLinkedList::DoubleLinkedList() {
+	//First the list is empty
+	head = 0;
+	tail = 0;
+	size = 0;
+
+}
+
+int DoubleLinkedList::insert(PageId pid)
+{
+	if(size==0)
+	{
+		//Empty list
+		head = new Node(pid);
+		tail = head;	//tail is the head
+		tail->next = NULL;
+		tail->last = NULL;
+		size++;
+	}
+	else
+	{	
+		//We create a new node at the end
+		Node* newNode = new Node(pid);
+		//Set the existing tail node cto point to this
+		tail->next = newNode;
+		//Have this node point to NULL (since now it is at the end)
+		newNode->next = NULL;
+		//Have this last ptr point to the one before, which is tail
+		newNode->last = tail;
+		//Now make tail the new node we just created
+		tail = newNode;
+
+	}
+}
+
+int DoubleLinkedList::destory()
+{
+	while(head!=tail)
+	{
+		Node* tobedeleted = tail->last;
+		delete tail;
+		tail = tobedeleted;
+	}
+	delete head;
+	return 0;	//success
+}
+
 /*
  * BTreeIndex constructor
  */
 BTreeIndex::BTreeIndex()
 {
     	rootPid = -1;
-	height = 0;	//initially 0 count. Needed to know whether reached leaf level
+	treeHeight = 0;	//initially 0 count. Needed to know whether reached leaf level
 }
 
 /*
@@ -50,7 +108,7 @@ RC BTreeIndex::open(const string& indexname, char mode)
 	memcpy(&rootPid,pointer,sizeof(PageId));	//Copy the rootPid from buffer containing the index to output
 	//cout << "Root is " << rootPid << endl;
 	pointer+= sizeof(PageId);
-	memcpy(&height,pointer,sizeof(int));		//Copy height to the beginnning
+	memcpy(&treeHeight,pointer,sizeof(int));		//Copy height to the beginnning
 	//cout << "Height is " << height << endl;
     	return 0;
 }
@@ -73,7 +131,7 @@ RC BTreeIndex::close()
 		//Increment the pointer (note rootPid is a PageId, so we do sizeof(PageId)
 		pointer+=sizeof(PageId);
 		//Copy the height to there as well)
-		memcpy(pointer,&height,sizeof(int));
+		memcpy(pointer,&treeHeight,sizeof(int));
 		if(pf.write(0,bufferArr) != 0)	//We write the rootPid and height info to pid 0
 			return RC_FILE_WRITE_FAILED;
 	    	return pf.close();
@@ -113,14 +171,14 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
 RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
 {
 	//Base case is when height is 0 or 1
-    	if(height==0)
+    if(treeHeight==0)
 	{
 		rootPid = 1;
 		cursor.pid = 1;
 		cursor.eid = 0;
-		height++;
+		treeHeight++;
 	}
-	if(height==1)
+	if(treeHeight==1)
 	{
 		int indexCursor = 0;
 		BTLeafNode temp;
@@ -134,7 +192,29 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
 	}
 	else
 	{
-		//TODO: Implement for height > 1
+		BTNonLeafNode nonleaf;
+		if(!nonleaf.read(rootPid, pf) != 0)
+			return RC_FILE_READ_FAILED;
+		int depth = 1;
+		while(depth < treeHeight) {
+			//We want to insert the next pid to our linked list
+			if(depth == 1)
+			{
+				structure.insert(rootPid);
+			}
+			else
+			{
+				structure.insert(nextPid);
+			}
+			if(nonleaf.locateChildPtr(searchKey,nextPid) != 0)
+				return RC_NO_SUCH_RECORD;
+			else if(nonleaf.read(nextPid,pf) != 0)
+				return RC_FILE_READ_FAILED;
+			depth++;
+		}
+		//At this point, we located the nextPid
+		cursor.pid = nextPid;
+		cursor.eid = 0;
 	}
 	return 0;
 }
