@@ -107,6 +107,10 @@ int BTLeafNode::getKeyCount()
     
     // Go through all, 4 last bytes are pointer to next leaf
     do {
+//        rid.pid = (int) buffer[0*x]; 
+//        rid.sid = (int) buffer[4*x];
+//        key = (int) buffer[8*x];
+//        
         int* temp = (int*) buffer;              // Your current buffer
         rid.pid = *(temp + x/sizeof(int));      // Offset of x/4
         rid.sid = *(temp + x/sizeof(int) + 1);  // Offset of x/4 + 1
