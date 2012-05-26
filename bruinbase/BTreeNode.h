@@ -114,6 +114,7 @@ class BTLeafNode {
 	int sizeRec;	// Size for each record
 	int sizeTot;	// Total size of a record
     int sizeMax;    // Maximum leaf entries
+	int sizeCount;	// Size of the number of keys, int
 }; 
 
 
@@ -212,6 +213,7 @@ class BTNonLeafNode {
 	int sizeRec;	// Size for each record
 	int sizeTot;	// Total size of a record
     int sizeMax;    // Max NonLeaf structs
+	int sizeCount;	// Size of the number of keys, int
     
     // A struct for each element in a nonleafnode.
     // "Next" is a pointer to the next PageId
