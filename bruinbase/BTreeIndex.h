@@ -13,6 +13,8 @@
 #include "Bruinbase.h"
 #include "PageFile.h"
 #include "RecordFile.h"
+
+#define EMPTY -1
              
 /**
  * The data structure to point to a particular entry at a b+tree leaf node.
@@ -88,6 +90,19 @@ class BTreeIndex {
   RC insert(int key, const RecordId& rid);
 
   /**
+   * InsertHelp(key, RecordId) pair to the index.
+   * Used recursively to insert.
+   * @param key[IN] the key for the value inserted into the index
+   * @param rid[IN] the RecordId for the record being inserted into the index
+   * @param pid[IN] the current pid
+   * @param nKey[OUT] key of sibling node if split
+   * @param nPid[OUT] pid of sibling node if split
+   * @param lvl[IN] level of tree
+   * @return error code. 0 if no error
+   */
+  RC insertHelp(int key, RecordId& rid, PageId pid, int& nKey, PageId& nPid, int lvl);
+
+  /**
    * Find the leaf-node index entry whose key value is larger than or
    * equal to searchKey and output its location (i.e., the page id of the node
    * and the entry number in the node) as "IndexCursor."
@@ -118,7 +133,7 @@ class BTreeIndex {
    * @return error code. 0 if no error
    */
   RC readForward(IndexCursor& cursor, int& key, RecordId& rid);
-  
+
  private:
   PageFile pf;         /// the PageFile used to store the actual b+tree in disk
 

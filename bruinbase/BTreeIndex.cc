@@ -146,9 +146,96 @@ RC BTreeIndex::close()
  */
 RC BTreeIndex::insert(int key, const RecordId& rid)
 {
-    return 0;
+    IndexCursor cur; 
+    PageId newPid, oldPid;
+    BTNonLeafNode sib, nonLeaf; // sibling
+    BTLeafNode leaf; // QUESTION: When do constructors get called again?
+    int newKey;
+    
+    // If empty tree
+    if (treeHeight == 0) {
+        // Increase tree height
+        treeHeight++;
+        
+        // Insert to the leaf
+        leaf.insert(key, rid);
+        
+        // This is for hte return value
+        rootPid = pf.endPid();
+        
+        return leaf.write(rootPid, pf);
+    } else {
+        
+    }
+    
+    
+    return 0; // Success
 }
 
+RC BTreeIndex::insertHelp(int key, RecordId& rid, PageId pid, int& nKey, PageId& nPid, int lvl)
+{
+	BTLeafNode leaf, sib; 					// Leaf node, sibling
+	BTNonLeafNode nonLeaf, nonLeafSib; 		// Nonleafnode / nonleafsibling
+	PageId sPid, sibPid, nextPid;			// Split/Sibling/next pid
+	int sKey, midKey; 						// Sibling key, middle key
+	RC rc; 									// return value
+	
+	// Base case, where level is the tree height (leaf)
+	if (lvl == treeHeight){
+		leaf.read(pid, pf);
+		
+		// If insert isn't successful (full)
+		if (leaf.insert(key, rid) != 0){
+			// Insert and split
+			leaf.insertAndSplit(key, rid, sib, sKey);
+			
+			// Write the sibling node
+			sPid = pf.endPid();
+			
+			leaf.write(pid, pf);
+		} else { // Successful
+		
+			leaf.write(pid, pf);
+			
+			return 0; // Success
+		}
+	} else { // Else it's a non-leaf node
+		// Initialize nonLeaf
+		nonLeaf.initializeRoot(EMPTY, EMPTY, EMPTY);
+		nonLeaf.read(pid, pf);
+		nonLeaf.locateChildPtr(key, nextPid);
+		
+		// Recursively insert
+		rc = this->insertHelp(key, rid, nextPid, sPid, sKey, lvl+1);
+		
+		// If we had to split
+		if (rc == RC_NODE_FULL){
+			if (nonLeaf.insert(sKey, sPid) == 0) {
+				nonLeaf.write(pid, pf);
+				return rc;
+			} else {
+				// It's full
+				rc = RC_NODE_FULL;
+				
+				// Initialize
+				nonLeafSib.initializeRoot(EMPTY, EMPTY, EMPTY);
+				
+				// Insert and split
+				nonLeaf.insertAndSplit(sKey, sPid, nonLeafSib, midKey);
+				
+				sibPid = pf.endPid();
+				nonLeafSib.write(sibPid, pf);
+				
+			}
+		} else 
+			return rc;
+	}
+	
+	nKey = sKey;	// Set return key
+	nPid = nPid;	// Set return pid
+	
+	return rc;
+}
 /*
  * Find the leaf-node index entry whose key value is larger than or 
  * equal to searchKey, and output the location of the entry in IndexCursor.

@@ -1,5 +1,12 @@
 CS143-Project-2
 ===============
+May 28, 2012 by Jonathan Nguy
+ - Tried to implement insert
+	- Though, I didn't use the double link lists (kind of unsure what I could've done)
+ - Have NOT tested, but compiles
+ - QUESTION: Does locate use the functions from BTreeNode.cc?
+	- Are we supposed to? I think that would make the most sense.
+	
 May 26, 2012 by Jonathan Nguy
  - Reworked typecasting into memcpy's
  - Read through code to make sure it logically made sense
