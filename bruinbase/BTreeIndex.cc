@@ -146,8 +146,7 @@ RC BTreeIndex::close()
  */
 RC BTreeIndex::insert(int key, const RecordId& rid)
 {
-    IndexCursor cur; 
-    PageId newPid, oldPid;
+    PageId newPid;
     BTNonLeafNode sib, nonLeaf; // sibling
     BTLeafNode leaf; // QUESTION: When do constructors get called again?
     int newKey;
@@ -165,10 +164,12 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
         
         return leaf.write(rootPid, pf);
     } else {
-        
+		// FIXME: what's wrong with this? Doesn't compile.
+        //return insertHelp(key, rid, rootPid, newKey, newPid, 1);
     }
-    
-    
+  
+    // FIXME: Error checking?
+
     return 0; // Success
 }
 
@@ -176,7 +177,7 @@ RC BTreeIndex::insertHelp(int key, RecordId& rid, PageId pid, int& nKey, PageId&
 {
 	BTLeafNode leaf, sib; 					// Leaf node, sibling
 	BTNonLeafNode nonLeaf, nonLeafSib; 		// Nonleafnode / nonleafsibling
-	PageId sPid, sibPid, nextPid;			// Split/Sibling/next pid
+	PageId sPid, sibPid;					// Split/Sibling pid
 	int sKey, midKey; 						// Sibling key, middle key
 	RC rc; 									// return value
 	
