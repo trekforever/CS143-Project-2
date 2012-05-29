@@ -167,7 +167,9 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
         return leaf.write(rootPid, pf);
     } else {
 		// FIXME: what's wrong with this? Doesn't compile.
-		RecordId tid;
+		RecordId tid; //Passing rid originally as a parameter. But rid
+		// is a const RecordId&. The parameter expected is
+		// RecordId& (without const)
          return insertHelp(key, tid, rootPid, newKey, newPid, 1);
     }
   
