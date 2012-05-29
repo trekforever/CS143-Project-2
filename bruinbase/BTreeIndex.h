@@ -39,8 +39,8 @@ typedef struct {
 class Node {
 public:
 	Node(PageId pid);
-	PageId getPid();
-	PageId pid;
+	PageId getPid(); //public function to retrieve the pageID
+	PageId pid;	//pid of the node (stored from constructor)
 	Node* next;	//Next Node
 	Node* last;	//Last node
 

@@ -149,7 +149,9 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
     PageId newPid;
     BTNonLeafNode sib, nonLeaf; // sibling
     BTLeafNode leaf; // QUESTION: When do constructors get called again?
+	//Gets called when you declare them, so right here ^
     int newKey;
+	RC rc;
     
     // If empty tree
     if (treeHeight == 0) {
@@ -165,7 +167,8 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
         return leaf.write(rootPid, pf);
     } else {
 		// FIXME: what's wrong with this? Doesn't compile.
-        //return insertHelp(key, rid, rootPid, newKey, newPid, 1);
+		RecordId tid;
+         return insertHelp(key, tid, rootPid, newKey, newPid, 1);
     }
   
     // FIXME: Error checking?
@@ -261,9 +264,9 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
 	//Base case is when height is 0 or 1
     if(treeHeight==0)
 	{
-		rootPid = 1;
-		cursor.pid = 1;
-		cursor.eid = 0;
+		rootPid = 1;	//set rootpid
+		cursor.pid = 1;	//the cursor pid will be 1
+		cursor.eid = 0; //the index for cusor will be 0 because it is the root
 		treeHeight++;
 	}
 	if(treeHeight==1)
@@ -283,23 +286,20 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
 		BTNonLeafNode nonleaf;
 		if(!nonleaf.read(rootPid, pf) != 0)
 			return RC_FILE_READ_FAILED;
-		int depth = 1;
-		while(depth < treeHeight) {
+		
+		for(int i = 1; i < treeHeight; i++)
+		{
 			//We want to insert the next pid to our linked list
-			if(depth == 1)
-			{
+			if(i==1)
 				structure.insert(rootPid);
-			}
 			else
-			{
 				structure.insert(nextPid);
-			}
 			if(nonleaf.locateChildPtr(searchKey,nextPid) != 0)
 				return RC_NO_SUCH_RECORD;
 			else if(nonleaf.read(nextPid,pf) != 0)
 				return RC_FILE_READ_FAILED;
-			depth++;
 		}
+
 		//At this point, we located the nextPid
 		cursor.pid = nextPid;
 		cursor.eid = 0;
