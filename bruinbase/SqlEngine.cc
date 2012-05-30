@@ -49,83 +49,297 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
     return rc;
   }
 
-  // scan the table file from the beginning
-  rid.pid = rid.sid = 0;
-  count = 0;
-  while (rid < rf.endRid()) {
-    // read the tuple
-    if ((rc = rf.read(rid, key, value)) < 0) {
-      fprintf(stderr, "Error: while reading a tuple from table %s\n", table.c_str());
-      goto exit_select;
-    }
+  //Make use of With Indexing Option
+  BTreeIndex treeIndex;
+  int compareMe = 0;
+  //1 is key column
+  SelCond* NotEqual1 = NULL;
+  SelCond* Max1 = NULL;
+  SelCond* Equal1 = NULL;
+  SelCond* Min1 = NULL;
+  //2 is value column
+  SelCond* NotEqual2 = NULL;
+  SelCond* Max2 = NULL;
+  SelCond* Equal2 = NULL;
+  SelCond* Min2 = NULL;
 
-    // check the conditions on the tuple
-    for (unsigned i = 0; i < cond.size(); i++) {
-      // compute the difference between the tuple value and the condition value
-      switch (cond[i].attr) {
-      case 1:
-	diff = key - atoi(cond[i].value);
-	break;
-      case 2:
-	diff = strcmp(value.c_str(), cond[i].value);
-	break;
-      }
-
-      // skip the tuple if any condition is not met
-      switch (cond[i].comp) {
-      case SelCond::EQ:
-	if (diff != 0) goto next_tuple;
-	break;
-      case SelCond::NE:
-	if (diff == 0) goto next_tuple;
-	break;
-      case SelCond::GT:
-	if (diff <= 0) goto next_tuple;
-	break;
-      case SelCond::LT:
-	if (diff >= 0) goto next_tuple;
-	break;
-      case SelCond::GE:
-	if (diff < 0) goto next_tuple;
-	break;
-      case SelCond::LE:
-	if (diff > 0) goto next_tuple;
-	break;
-      }
-    }
-
-    // the condition is met for the tuple. 
-    // increase matching tuple counter
-    count++;
-
-    // print the tuple 
-    switch (attr) {
-    case 1:  // SELECT key
-      fprintf(stdout, "%d\n", key);
-      break;
-    case 2:  // SELECT value
-      fprintf(stdout, "%s\n", value.c_str());
-      break;
-    case 3:  // SELECT *
-      fprintf(stdout, "%d '%s'\n", key, value.c_str());
-      break;
-    }
-
-    // move to the next tuple
-    next_tuple:
-    ++rid;
+  for(int i=0; i < cond.size(); i++)
+  {
+	  //Can also use stringstream too
+	  compareMe = atoi(cond[i].value);
+	  //Iterate through all the members of the vector input
+	  if(cond[i].attr == 1)
+	  {
+		  //1 is Key Column
+		  if(cond[i].comp == SelCond::NE)
+		  {
+			  //Not Equal
+			  NotEqual1 = (SelCond*) &cond[i];
+		  }
+		  else if(cond[i].comp == SelCond::LE)
+		  {
+			  //Less Than or Equal To
+			  compareMe++;
+			  int bufferVal = atoi(Max1->value);
+			  if(Max1 == NULL || bufferVal < compareMe)
+			  {
+				  //Set new pointer
+				  Max1 = (SelCond*) &cond[i];
+			  }
+		  }
+		  else if(cond[i].comp == SelCond::LT)
+		  {
+			  // Less THan
+			  int bufferVal = atoi(Max1->value);
+			  if(Max1 == NULL || bufferVal < compareMe)
+			  {
+				  //Set new pointer
+				  Max1 = (SelCond*) &cond[i];
+			  }
+		  }
+		  else if(cond[i].comp == SelCond::EQ)
+		  {
+			  //Equal
+			  Equal1 = (SelCond*) &cond[i];
+		  }
+		  else if(cond[i].comp == SelCond::GE)
+		  {
+			  //Greater or Equal To
+			  compareMe--;
+			  int bufferVal = atoi(Min1->value);
+			  if(Min1 == NULL || bufferVal > compareMe)
+			  {
+				  //Set new pointer
+				  Min1 = (SelCond*) &cond[i];
+			  }
+		  }
+		  else if(cond[i].comp == SelCond::GT)
+		  {
+			  int bufferVal = atoi(Min1->value);
+			  if(Min1 == NULL || bufferVal > compareMe)
+			  {
+				  //Set new pointer
+				  Min1 = (SelCond*) &cond[i];
+			  }
+		  }
+		  else
+			  cerr << "Error: SqlEngine.cc. SHould never reach here" << endl;
+	  }
+	  else if(cond[i].attr == 2)
+	  {
+		  //We have a value column here
+		  // we do the same things again ...
+		  if(cond[i].comp == SelCond::NE)
+		  {
+			  //Not Equal
+			  NotEqual2 = (SelCond*) &cond[i];
+		  }
+		  else if(cond[i].comp == SelCond::LE)
+		  {
+			  //Less Than or Equal To
+			  compareMe++;
+			  int bufferVal = atoi(Max2->value);
+			  if(Max2 == NULL || bufferVal < compareMe)
+			  {
+				  //Set new pointer
+				  Max2 = (SelCond*) &cond[i];
+			  }
+		  }
+		  else if(cond[i].comp == SelCond::LT)
+		  {
+			  // Less THan
+			  int bufferVal = atoi(Max2->value);
+			  if(Max2 == NULL || bufferVal < compareMe)
+			  {
+				  //Set new pointer
+				  Max2 = (SelCond*) &cond[i];
+			  }
+		  }
+		  else if(cond[i].comp == SelCond::EQ)
+		  {
+			  //Equal
+			  Equal2 = (SelCond*) &cond[i];
+		  }
+		  else if(cond[i].comp == SelCond::GE)
+		  {
+			  //Greater or Equal To
+			  compareMe--;
+			  int bufferVal = atoi(Min2->value);
+			  if(Min2 == NULL || bufferVal > compareMe)
+			  {
+				  //Set new pointer
+				  Min2 = (SelCond*) &cond[i];
+			  }
+		  }
+		  else if(cond[i].comp == SelCond::GT)
+		  {
+			  int bufferVal = atoi(Min2->value);
+			  if(Min2 == NULL || bufferVal > compareMe)
+			  {
+				  //Set new pointer
+				  Min2 = (SelCond*) &cond[i];
+			  }
+		  }
+		  else
+			  cerr << "Error: SqlEngine.cc. SHould never reach here" << endl;
+	  }
+	  else
+		  cerr << "Error: SqlEngine.cc. Should Never reach here" << endl;
   }
+  int indexFlag = 0;
+  if(treeIndex.open(table+".idx",'r')==0)
+  {
+	//Success
+	  IndexCursor cursor;
+	  indexFlag = 1;
+	  
+	  //Lookup
+	  if(Equal1 || Min1 || Max1 || NotEqual1)
+	  {
+		  int target = 0;
+		  int lowerBound = 0;
+		  int upperBound = 0;
+		  int notkey = 0;
+		  //Key Value
+		  if(Equal1)
+			  target = atoi(Equal1->value);
+		  if(Min1)
+		  {
+			  lowerBound = atoi(Min1->value);
+			  target = lowerBound;
+		  }
+		  if(Max1)
+		  {
+			  upperBound = atoi(Max1->value);
+			  if(Min1 == NULL)
+			  {
+				  target = upperBound;
+			  }
+		  }
+		  if(NotEqual1)
+		  {
+			  notkey = atoi(NotEqual1->value);
+		  }
 
-  // print matching tuple count if "select count(*)"
-  if (attr == 4) {
-    fprintf(stdout, "%d\n", count);
+		  //Error Checking
+		  if(Max1 && treeIndex.locate(0,cursor)!=0)
+		  {
+			  int returnvalue = treeIndex.locate(0,cursor);
+			  treeIndex.close();
+			  return returnvalue;
+		  }
+		  if(NotEqual1 == NULL && treeIndex.locate(target, cursor) != 0)
+		  {
+			   int returnvalue = treeIndex.locate(target, cursor);
+			   treeIndex.close();
+			   return returnvalue;
+		  }
+
+		  //Read Forward Now
+		  while(treeIndex.readForward(cursor,key,rid) == 0) //Sucessful
+		  {
+			  if(Max1 && Max1->comp == SelCond::LE)
+			  {
+				  if(target > upperBound)
+					  break;
+			  }
+			  else if(Max1 && Max1->comp != SelCond::LE)
+			  {
+				  if(target >= upperBound)
+					  break;
+			  }
+
+			  if(rf.read(rid,key,value) != 0)
+			  {
+				  //Error
+				  int returnvalue = rf.read(rid,key,value);
+				  treeIndex.close();
+				  return returnvalue;
+			  }
+
+			  count++;
+			  if(attr == 1) //Key
+				  cout << key << endl;
+			  else if(attr==2) //Value
+				  cout << value.c_str() << endl;
+			  else if(attr==3) //All
+				  cout << key << " " << value.c_str() << endl;
+			 
+			  if(Equal1 && key == target)
+				  //Found it
+				  break;
+			  if(NotEqual1 && key != notkey)
+				  //Still works
+				  break;
+		  }
+		  if(Equal1 == NULL || Min1 == NULL || Max1 == NULL) {
+			  treeIndex.close();
+			  indexFlag = 0;
+		  }
+		  else
+			treeIndex.close();
+	  }
   }
-  rc = 0;
+  if(indexFlag == 0)
+  {
+	  // scan the table file from the beginning
+	  rid.pid = rid.sid = 0;
+	  count = 0;
+	  while (rid < rf.endRid()) {
+		// read the tuple
+		if ((rc = rf.read(rid, key, value)) < 0) {
+		  fprintf(stderr, "Error: while reading a tuple from table %s\n", table.c_str());
+		  goto exit_select;
+		}
 
-  // close the table file and return
-  exit_select:
-  rf.close();
-  return rc;
+		// check the conditions on the tuple
+		int equal1val = atoi(Equal1->value);
+		int max1val = atoi(Max1->value);
+		int min1val = atoi(Min1->value);
+		int notequalval = atoi(NotEqual1->value);
+		if (Equal1 != NULL && (int) key != equal1val)	goto next_tuple;
+		if (Max1 != NULL && (int) key >= max1val)	goto next_tuple;
+		if (Min1 != NULL && (int) key <= min1val)	goto next_tuple;
+		if (NotEqual1 && (int) key == notequalval) goto next_tuple;
+
+		if (NotEqual2 != NULL && value != Equal2->value)		goto next_tuple;
+		if (Max2 != NULL &&  value >= Max2->value)	goto next_tuple;
+		if (Min2 != NULL && value <= Min2->value)	goto next_tuple;
+		if (NotEqual2 && value == NotEqual2->value) goto next_tuple;
+
+		// the condition is met for the tuple. 
+		// increase matching tuple counter
+		count++;
+
+		// print the tuple 
+		switch (attr) {
+		case 1:  // SELECT key
+		  fprintf(stdout, "%d\n", key);
+		  break;
+		case 2:  // SELECT value
+		  fprintf(stdout, "%s\n", value.c_str());
+		  break;
+		case 3:  // SELECT *
+		  fprintf(stdout, "%d '%s'\n", key, value.c_str());
+		  break;
+		}
+
+		// move to the next tuple
+		next_tuple:
+		++rid;
+	  }
+
+	  // print matching tuple count if "select count(*)"
+	  if (attr == 4) {
+		fprintf(stdout, "%d\n", count);
+	  }
+	  rc = 0;
+
+	  // close the table file and return
+	  exit_select:
+	  rf.close();
+	  return rc;
+  }
 }
 
 RC SqlEngine::load(const string& table, const string& loadfile, bool index)
@@ -136,6 +350,11 @@ RC SqlEngine::load(const string& table, const string& loadfile, bool index)
 		// if it doesn't open, fail
 		return RC_FILE_OPEN_FAILED;
 	} 
+	BTreeIndex treeIndex;
+	if(index)
+	{
+		treeIndex.open(table + ".idx", 'w');
+	}
 
 	ifstream input; // input stream (loadfile)
 	input.open (loadfile.c_str()); // load file
@@ -159,6 +378,14 @@ RC SqlEngine::load(const string& table, const string& loadfile, bool index)
 				
 				if (!rf.append(key, val, rid)){
 					// we successfully appended
+					if(index)
+					{
+						if(treeIndex.insert(key,rid) != 0)
+						{
+							cerr << "Unable to insert <" << key << "> to the treeIndex" << endl;
+							return RC_FILE_WRITE_FAILED;
+						}
+					}
 				} else {
 					return RC_INVALID_ATTRIBUTE; // error in appending
 				}
@@ -168,6 +395,7 @@ RC SqlEngine::load(const string& table, const string& loadfile, bool index)
 		}
 	} 
 	
+	treeIndex.close();
 	input.close();	// close the input stream
 	rf.close(); 	// close the recordfile
   	return 0;
