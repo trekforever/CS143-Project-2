@@ -21,9 +21,17 @@ BTLeafNode::BTLeafNode()
 	 *     |key,value |
 	 *      ----------- => sizeRec */
     
+    // QUESTION:
+    // Size of a record is the size of the record * # of keys?
+    
+    
+	//sizeRec = getKeyCount() * sizeRec;	//Size of each record
+	//cout << "Record Size: " << sizeRec << endl;
+    
     sizeRec = sizeof(RecordId) + sizeof(int);  
-    sizeCount = sizeof(int);
+	sizeTot = getKeyCount()*sizeRec;                    // Total Size of a leafnode
     sizeMax = (PageFile::PAGE_SIZE - sizeof(PageId) - sizeof(int)) / sizeRec;     // Maximum # of rid/key pairs    
+    sizeCount = sizeof(int);
     
 	//cout << "Total Size: " << sizeTot << endl;
 	//cout << "Current Key Count: " << getKeyCount() << endl;
@@ -33,6 +41,8 @@ BTLeafNode::BTLeafNode()
     *   First 4 bytes:
 	*	[sizeof(int)]	[sizeof(PageId)]	[sizeRec]          [sizeof(int)]
 	*	[Key Count]     [First PageId]		[First RecordId]	[key]
+	*
+	*
 	*/
 }
 
@@ -71,18 +81,51 @@ RC BTLeafNode::write(PageId pid, PageFile& pf)
  */
 int BTLeafNode::getKeyCount()
 {	
-    // [Done. Checked.]
-	// PsuedoCode:
-	// Each of our key is an int, so we can use sizeof(int) to determine
-	// the number of bytes. Then couldn't we just get that number of bytes
-	// from the buffer array, and shouldn't that just be the # of records?
-	// Note that the first four bytes stores the # of records of a page
+//    // [Done. Checked.]
+//	// PsuedoCode:
+//	// Each of our key is an int, so we can use sizeof(int) to determine
+//	// the number of bytes. Then couldn't we just get that number of bytes
+//	// from the buffer array, and shouldn't that just be the # of records?
+//	// Note that the first four bytes stores the # of records of a page
 
 	int tempStorage = 0;	
 	//memcpy(destination,source,size)
 	memcpy(&tempStorage, &buffer, sizeCount);	//get the first 4 bytes, store it into tempStorage
 	return tempStorage;
-
+    
+    /* General idea:
+     *  Keep iterating until you find an empty entry.
+     *  Each iteration adds to the count.
+     *  Return the count.
+     */
+//    
+//    int countKeys = 0;                                // number of keys
+//    int lim = PageFile::PAGE_SIZE - sizeof(PageId); // max number
+//    int x = 0;
+//    int key;
+//    RecordId rid;
+//    
+//    // Go through all, 4 last bytes are pointer to next leaf
+//    do {
+////        rid.pid = (int) buffer[0*x]; 
+////        rid.sid = (int) buffer[4*x];
+////        key = (int) buffer[8*x];
+////        
+//        int* temp = (int*) buffer;              // Your current buffer
+//        rid.pid = *(temp + x/sizeof(int));      // Offset of x/4
+//        rid.sid = *(temp + x/sizeof(int) + 1);  // Offset of x/4 + 1
+//        key = *(temp + x/sizeof(int) + 2);      // Offset of x/4 + 2
+//        
+//        countKeys++; // Count keys
+//        
+//        x++;
+//        
+//        // While it's not an empty entry
+//        // FIXME: If the whole thing is empty, it'll still count 1.
+//        
+//    } while (x < lim || (key != EMPTY || rid.sid != EMPTY || rid.pid != EMPTY));
+//
+//    return countKeys;
 }
 
 /*
@@ -102,59 +145,45 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
      *  Write into the buffer.
      */ 
     
-    // [Done. Should be good]
-	sizeTot = getKeyCount()*sizeRec;                    // Total Size of a leafnode
-
     const int numKey = getKeyCount(); // Number of keys
     
     if (numKey >= sizeMax)
         return RC_NODE_FULL;    // Return if it's full
     
-    int eid = 0;
-    int temp;
+    int tempId = 0;
+    int tempKey = 0;
     
     // Locate spot to insert using locate()    
     // If unable to locate a spot to open, add to the end
-    if (locate(key, eid)){ // Will return 0 if it does locate, 0 if doesn't
-        eid = numKey;
-    }
+    if (locate(key, tempId)) // Will return 0 if it does locate, 0 if doesn't
+        tempId = numKey;	// Will not run if located
     
     // Starting from the last leaf, shift the character buffer over by 1 entry
 	// Possible ERROR here:
-    for (int x = numKey; x >= eid; x--){
-        int curOff = sizeCount + x*sizeRec;
-        int oldOff = sizeCount + (x-1)*sizeRec;
-        memcpy(buffer+curOff, buffer+oldOff, sizeRec);
-    }
+    for (int x = sizeTot - sizeof(int); x >= sizeRec * tempId; x--)
+		memcpy(buffer+x, buffer+x-sizeRec, sizeRec);
+//        buffer[x+sizeRec] = buffer[x];
     
-    // Insert the new entry
-	int offSet = sizeof(int) + eid * sizeRec;
-    int newOffSet = offSet + sizeof(RecordId);
-//    printf("eid: %d, key: %d, offset: %d, newoffset: %d\n", eid, key, offSet, newOffSet);
-    
-	memcpy(&buffer[0]+offSet, &rid, sizeof(RecordId));
-	memcpy(&buffer[0]+newOffSet, &key, sizeof(int));
-    
-    memcpy(&temp, buffer+newOffSet, sizeof(int));
+    // Make the (key, rid) a character array
+    // FIXME: Writing integers to a character buffer may cause problems
+	int offSet = sizeof(int) + tempId * sizeRec;
+	memcpy(buffer+offSet, &rid, sizeof(RecordId));
+	memcpy(buffer+offSet+sizeof(RecordId), &key, sizeof(int));
 
 	//Set new count and store it
 	int newCount = numKey + 1;
 	// Set the count at the beginning of the buffer
-	memcpy(&buffer[0], &newCount ,sizeof(int));
-    
-//    printf("count: %d\n", newCount);
+	memcpy(buffer, &newCount ,sizeof(int));
 
-//    printf("Number of keys: %d\n", numKey+1);
-
-//    printf("Key 1: %d\n", temp);
-//    if (numKey > 30)
-//    printf("Key added: %d\n", temp);
-//    for (int x = 0; x < numKey+1; x++){    
-//        memcpy(&temp, buffer+sizeof(int)+x*sizeRec+sizeof(RecordId), sizeof(int));
-//        printf("Key %d: %d\n", x, temp);
-//    }
-//    printf("\n");
+//    char tempBuf[sizeTot];
+//    tempBuf[0] = rid.pid;
+//    tempBuf[1*sizeof(int)] = rid.sid;
+//    tempBuf[2*sizeof(int)] = key;
     
+//    // Finally, insert
+//    for (int x = sizeTot * tempId; x < sizeTot * (tempId+1); x++)
+//        buffer[x] = tempBuf[x - sizeTot * tempId];
+//    
 	return 0; 
 }
 
@@ -181,24 +210,19 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
      *  Set the sibling's next pointer
      *  Insert the record
      */
-	sizeTot = getKeyCount()*sizeRec;                    // Total Size of a leafnode
     
     // Check size, we shouldn't be splitting here
 	int numKey = getKeyCount();
-    if (numKey < sizeMax){
+    if (numKey < sizeMax)
         return RC_NODE_FULL; 
-    }
 
 	// Check if sibling is empty before it's called
-	if (sibling.getKeyCount() > 0){
+	if (sibling.getKeyCount() > 0)
 		return RC_NODE_FULL; 
-    }
 	
     // Id of last entry to split
     int lastPid = sizeMax / 2;
 	int keysToCopy = numKey - lastPid;
-    
-//    printf("lastpid: %d, keystocopy: %d\n", lastPid, keysToCopy);
 
 	// Create a temp key and an empty key, a is temp, b is empty.
     int bKey = EMPTY;
@@ -209,7 +233,6 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
 		// Get the key startin from middle
 		int tempKey = 0;
 		memcpy(&tempKey, buffer+sizeCount+(lastPid+x)*sizeRec+sizeof(RecordId), sizeof(int));
-
 		//Get the Rid starting from the middle
 		RecordId tempRid;
 		memcpy(&tempRid, buffer+sizeCount+(lastPid+x)*sizeRec, sizeof(RecordId));
@@ -217,18 +240,39 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
 		if (x==0)
 			siblingKey = tempKey;
 		
-//        printf("Inserted: %d into sibling!\n", tempKey);
-        
 		// Insert it into the sibling
 		sibling.insert(tempKey, tempRid);
-            
-        
+		
 		memcpy(buffer+sizeCount+(lastPid+x)*sizeRec, &bRid, sizeof(RecordId));
 		memcpy(buffer+sizeCount+(lastPid+x)*sizeRec+sizeof(RecordId), &bKey, sizeof(int));
 	}
-    
-    // Edit the count of the old buffer
-    memcpy(buffer, &lastPid, sizeCount);
+
+//    // Start from the middle
+//    for (int x = sizeof(int)+lastPid*sizeRec; x < sizeMax*sizeRec; x += sizeRec)
+//    {	
+//        // Get integers from the char buffer
+//        int* temp = (int*) buffer;              // Your current buffer
+//        aRid.pid = *(temp + x/sizeof(int));        // Get first int
+//        aRid.sid = *(temp + x/sizeof(int) + 1);    // 2nd int
+//        aKey = *(temp + x/sizeof(int) + 2);        // 3rd int
+//        
+//	    // Copy entires into sibling
+//	    sibling.insert(aKey, aRid);
+//        
+//	    // Assign sibling key
+//	    if (x == lastPid*sizeTot)
+//	        siblingKey = aKey;
+//        
+//		// Create an empty buffer (for the last)        
+//        char tempBuf[sizeTot];
+//        tempBuf[0] = bRid.pid;
+//        tempBuf[1*sizeof(int)] = bRid.sid;
+//        tempBuf[2*sizeof(int)] = bKey;
+//        
+//		// Clear entry
+//        for (int y = x; y < (x + sizeTot); y++)
+//            buffer[y] = tempBuf[y-x];
+//    }
     
 	// Get the current pageID from the current node
 	PageId temp = getNextNodePtr();
@@ -246,7 +290,6 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
 	else
 		insert(key,rid);
 		
-    printf("\n");
     return 0; // Success
 	
 }
@@ -268,17 +311,17 @@ RC BTLeafNode::locate(int searchKey, int& eid)
      *  If found, set the @param eid to that iteration
      *  If not found, return error.
      */
-    // [Done. Tested]
-	char* pointer = &buffer[0] + sizeof(int) + sizeof(RecordId);	//Pointing to the first element, skipping the count
-	int curKey = 0; // Current stored key
-	int numKey = getKeyCount();
     
+	char* pointer = &buffer[0] + sizeof(int) + sizeof(RecordId);	//Pointing to the first element, skipping the count
+	int tempStorage = 0;
+	int numKey = getKeyCount();
+
 	for (int x=0; x < numKey; x++)
 	{
 		//Copy it to temp storage for comparison
-		memcpy(&curKey, pointer, sizeof(int));
+		memcpy(&tempStorage, pointer, sizeof(int));
 		
-		if(curKey >= searchKey)
+		if(tempStorage >= searchKey)
 		{
 			eid = x;	//Found it!
 			return 0;
@@ -290,6 +333,31 @@ RC BTLeafNode::locate(int searchKey, int& eid)
 	
 	// If we still don't find it at this point
 	return RC_NO_SUCH_RECORD;
+
+//    int numKey = getKeyCount();
+//    int key;
+//    RecordId rid;
+//    
+//    // Go through the number of keys
+//    for (int x = 0; x < numKey; x++){
+//		int temp = 0;
+//		//memcpy(dest,src,size);
+//		memcpy 
+//
+//        // Get integers from the char buffer
+//        int* temp = (int*) buffer;              // Your current buffer
+//        rid.pid = *(temp + (x*sizeTot)/sizeof(int));        // Get first int
+//        rid.sid = *(temp + (x*sizeTot)/sizeof(int) + 1);    // 2nd int
+//        key = *(temp + (x*sizeTot)/sizeof(int) + 2);        // 3rd int
+//        
+//        if (key >= searchKey){
+//            eid = x;        // Which entry it is
+//            return 0;       // Success!
+//        }
+//    }
+//    
+//    // Unable to locate
+//    return RC_NO_SUCH_RECORD;
 }
 
 /*
@@ -313,6 +381,11 @@ RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid)
     // Get integers from the char buffer
 	memcpy(&key, buffer+sizeCount+eid*sizeRec+sizeof(RecordId), sizeof(key));
 	memcpy(&rid, buffer+sizeCount+eid*sizeRec, sizeof(RecordId));
+	
+//    int* temp = (int*) buffer;              // Your current buffer
+//    rid.pid = *(temp + (eid*sizeTot)/sizeof(int));      // Offset of x/4
+//    rid.sid = *(temp + (eid*sizeTot)/sizeof(int) + 1);  // Offset of x/4 + 1
+//    key = *(temp + (eid*sizeTot)/sizeof(int) + 2);      // Offset of x/4 + 2
     
     return 0; // Success
 }
@@ -356,34 +429,6 @@ RC BTLeafNode::setNextNodePtr(PageId pid)
 	// Error checking
 }
 
-
-
-void BTLeafNode::convertToLeafEntry(char* buffer, int index, int& key, RecordId& rid)
-{
-    int* bint = (int*) buffer;
-    rid.pid = *(bint+index/sizeof(int));
-    rid.sid = *(bint+index/sizeof(int)+1);
-    key = *(bint+index/sizeof(int)+2);
-}
-
-void BTLeafNode::convertToChar(int key, RecordId rid, char* buf)
-{
-    int* bint = (int*) buf;
-    *(bint) = rid.pid;
-    *(bint+1) = rid.sid;
-    *(bint+2) = key;
-    buf = (char*) bint;
-}
-
-
-
-
-
-
-
-
-
-
 /*
  *
  *
@@ -403,9 +448,10 @@ BTNonLeafNode::BTNonLeafNode()
 	memset(buffer,0,PageFile::PAGE_SIZE);
 
 	// Global variables
+	sizeRec = sizeof(NonLeaf);                           // Total Size
+	sizeTot = getKeyCount() * sizeRec;                                  //Size of each record
+    sizeMax = (PageFile::PAGE_SIZE - sizeof(PageId) - sizeof(int))/sizeof(NonLeaf);   // Max # of NonLeaf nodes
     sizeCount = sizeof(int);
-	sizeRec = sizeof(PageId) + sizeof(int);                           // Total Size
-    sizeMax = (PageFile::PAGE_SIZE - sizeof(PageId) - sizeof(int))/sizeRec - 1;   // Max # of NonLeaf nodes
 	//See LeafNode constructor for more information
 }
 
@@ -450,7 +496,31 @@ int BTNonLeafNode::getKeyCount()
 	int tempStorage = 0;	
 	memcpy(&tempStorage, &buffer, sizeCount);	// First 4 bytes of page is count info
 	return tempStorage;		// Number of keys
-
+    
+//    int countKeys = 0;  // number of keys
+//    
+//    char tempBuf[4]; 
+//    // copy first 4 bytes
+//    for (int x = 0; x < 4; x++)
+//        tempBuf[x] = buffer[x];
+//    PageId firstPid = (PageId)tempBuf;                              // PID at the beginning
+//    NonLeaf* myNonLeaf = (NonLeaf*)(buffer + sizeof(PageId));    // Start from the first key
+//    int lim = PageFile::PAGE_SIZE - sizeof(PageId);                 // max number
+//    
+//    if (firstPid == EMPTY)
+//        return 0;
+//    
+//    // Go through the nonleafnode
+//    for (int x = 0; x < lim; x++){
+//        countKeys++;    // count keys
+//        
+//        if(myNonLeaf->next == EMPTY)
+//            break;
+//        
+//        myNonLeaf += sizeof(NonLeaf);    // go to the next PId
+//    }
+//    
+//    return countKeys;   // return number of keys
 }
 
 
@@ -471,79 +541,51 @@ RC BTNonLeafNode::insert(int key, PageId pid)
      *  Write into the buffer.
      */ 
     
-    //[Done. Should be okay]
-	//cout << "Key to Insert: " << key << endl;
-	//Similar to the BTLeafNode::insert (to an similar extent) 
-	//So some codes are copied from that function respectively
-    
-	char* pointer = &buffer[0]+sizeof(PageId)+ sizeof(int);	//First page
-    const int numKey = getKeyCount(); // Number of keys 
-    
-	//Want to iterate through the pages until we find the one to insert beforehands
-	int eid = 0;    // Location to insert the key
-	int tempStorage = 0;	//Storage comparison
+    const int numKey = getKeyCount(); // Number of keys left
     
     // Return if it's full
-    if (numKey >= sizeMax){
+    if (numKey >= sizeMax)
         return RC_NODE_FULL;
+    
+    int countKeys = 0;
+    int tempId = 0;
+    int tempKey = 0;
+    int lim = PageFile::PAGE_SIZE - sizeof(PageId);              // max number
+    
+    NonLeaf* myNonLeaf = (NonLeaf*)(buffer + sizeCount);    // Start from the first key
+
+    // Go through the nonleafnode
+    for (int x = 0; x < lim; x++){
+        
+        if (myNonLeaf->next == EMPTY)
+            break;
+        
+        myNonLeaf += sizeof(NonLeaf);    // go to the next Pid
+        countKeys++;
+    }
+
+    if (myNonLeaf->next != EMPTY){ 
+        // if it's not empty, shift it
+        for (int x = sizeMax - countKeys - 1; x > 0; x--){
+            NonLeaf* last = (NonLeaf*)(buffer + x);
+            NonLeaf* curr = (NonLeaf*)(buffer + x-1);
+            
+            // Copy values
+            last->key = curr->key;
+            last->next = curr->next;
+        }
     }
     
-    // Start with the first key
-	if (pointer!=NULL)
-		memcpy(&tempStorage, pointer, sizeof(int));	//Copy it to temp storage for comparison. Initial.
-    
-    // Search for location to insert key
-	while(pointer!=NULL && key > tempStorage)	//Find the key that is right before our insertion point
-	{
-		memcpy(&tempStorage, pointer, sizeof(int));	//Copy it to temp storage for comparison
-		pointer += sizeRec;	//Goes to the next record
-        
-		eid++;
-        
-		//Should exit once tempStorage >= Key. Do we need to check when tempStorage = 0? Let's just do it just incase.
-		if(tempStorage==0)
-			break;	//Needs testing and checking
-	}
-    
-    // Shift over so you can insert
-    for (int x = numKey; x >= eid; x--){
-        // offset by count + 1st pageid + key/Pageid pair
-        int curOff = sizeCount*2 + x*sizeRec;
-        int oldOff = sizeCount*2 + (x-1)*sizeRec;
-        memcpy(buffer+curOff, buffer+oldOff, sizeRec);
-    }
-    
-    // Need to offset because of the whileloop
-    if (eid != 0)
-        eid--;
-    
-    int offSet = sizeof(int)*2 + eid * sizeRec; // location to insert key
-    int newOffSet = offSet + sizeof(int); // location to insert pid
-    
-    printf("NONLEAF: eid: %d, key: %d, offset: %d, newoffset: %d\n", eid, key, offSet, newOffSet);
-    
-    memcpy(&buffer[0]+offSet, &key, sizeof(int));
-	memcpy(&buffer[0]+newOffSet, &pid, sizeof(PageId));
-    
+    // Finally, insert
+    myNonLeaf->key = key;
+    myNonLeaf->next = pid;
+
 	//Set new count and store it
-	pointer = &buffer[0];	//Goes back to the beginning
-	int newCount = getKeyCount() + 1;	//Increment count
-	memcpy(pointer,&newCount,sizeof(int));
-	
-    // DEBUG
-    int temp;
-    PageId tPid;
-    memcpy(&tPid, buffer+sizeof(int), sizeof(int));
-    printf("NONLEAF: First pid: %d\n", tPid);
-    for (int x = 0; x < numKey+1; x++){    
-        memcpy(&temp, buffer+sizeof(int)+sizeof(PageId)+x*sizeRec, sizeof(int));
-        memcpy(&tPid, buffer+sizeof(int)+(x+1)*sizeRec, sizeof(int));
-        printf("NONLEAF: Key %d: %d, pid: %d\n", x, temp, tPid);
-    }
-    printf("\n");
+	int newCount = getKeyCount() + 1;
+	// Set the count here
+	memcpy(buffer, &newCount, sizeof(int));
     
-	return 0;
-    
+	return 0; // Success!
 }
 
 /*
@@ -569,66 +611,47 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
      *  Set the sibling's next pointer
      *  Insert the record
      */
-	sizeTot = getKeyCount() * sizeRec;                                  //Size of each record
     
     int numKey = getKeyCount();
     
-    // Check size, we shouldn't be splitting here
-    if (numKey < sizeMax){
-        printf("Why am I here 1?\n");
-        return RC_NODE_FULL; 
-    }
-    
+    // Check size
+    if (numKey < sizeMax)
+        return RC_NODE_FULL; // is this correct?
+
 	// Check if sibling is empty before it's called
-	if (sibling.getKeyCount() > 0){
-        printf("Why am I here 2?\n");
+	if (sibling.getKeyCount() > 0)
 		return RC_NODE_FULL; 
+    
+    int mid = getKeyCount() / 2; // Takes the floor
+    
+    NonLeaf* myNonLeaf = (NonLeaf*)(buffer + sizeof(PageId));    // Start from the first key
+    NonLeaf* midNonLeaf = myNonLeaf + mid;      // Increment by mid * sizeof(NonLeaf)
+    
+    // Set the middle key
+    midKey = midNonLeaf -> key;
+    
+    // Initialize the sibling as empty
+    sibling.initializeRoot(midNonLeaf->next, EMPTY, EMPTY);
+    
+    // Starting from the middle until the end
+    for (int x = mid; x < numKey; x++){
+        int currKey = (myNonLeaf+x)->key;
+        int currPid = (myNonLeaf+x)->next;
+        
+        // Insert and check
+        if(sibling.insert(currKey, currPid))
+            // If unable to insert
+            return RC_NO_SUCH_RECORD; // Not sure what error to return
+        
+        (myNonLeaf+x)->key = EMPTY;
+        (myNonLeaf+x)->next = EMPTY;
     }
     
-    int lastPid = sizeMax / 2; // Number of nodes left in original node after split
-    int keysToCopy = numKey - lastPid;
-    printf("NONLEAF: lastpid: %d, keystocopy: %d\n", lastPid, keysToCopy);
+    // Clear middle
+    (myNonLeaf+mid)->key = EMPTY;
+    (myNonLeaf+mid)->next = EMPTY;
     
-    PageId bPid = EMPTY;
-    int bKey = EMPTY;
-    
-    // Get the middle pid, and initialize the sibling.
-    PageId midPid;
-    memcpy(&midPid, buffer+sizeCount+lastPid*sizeRec, sizeof(PageId));
-    
-    // For intializing, create a new BTNonLeafNode with the corresponding pid's and key
-    // This should be from the middle pointer
-    int tempKey;
-    PageId tempPid;
-    memcpy(&tempKey, buffer+sizeCount*2+lastPid*sizeRec, sizeof(int));
-    memcpy(&tempPid, buffer+sizeCount*2+lastPid*sizeRec+sizeof(int), sizeof(PageId));
-    printf("Initialize tempKey: %d, tempPid: %d\n", tempKey, tempPid);
-    sibling.initializeRoot(midPid, tempKey, tempPid);
-    
-    memcpy(&midKey, buffer+sizeCount*2+lastPid*sizeRec, sizeof(int));
-    printf("NONLEAF: midkey: %d\n", midKey);
-    
-    // Copy from old buffer into sibling.
-    for (int x = 1; x < keysToCopy; x++){
-		// Get the key startin from middle
-		memcpy(&tempKey, buffer+sizeCount*2+(lastPid+x)*sizeRec, sizeof(int));
-        memcpy(&tempPid, buffer+sizeCount*2+(lastPid+x)*sizeRec+sizeof(int), sizeof(PageId));
-		
-        printf("Still splitting nonleaf...!\n");
-        printf("NONLEAF: Inserted: %d into sibling!\n", tempKey);
-        
-		// Insert it into the sibling
-		sibling.insert(tempKey, tempPid);
-        
-        
-		memcpy(buffer+sizeCount*2+(lastPid+x)*sizeRec, &bKey, sizeof(int));
-        memcpy(buffer+sizeCount*2+(lastPid+x)*sizeRec+sizeof(int), &bPid, sizeof(PageId));
-	}
-    
-    // Edit the count of the old buffer
-    memcpy(buffer, &lastPid, sizeCount);
-    
-    // Finally, insert into either sibling or original
+    // Finally, insert
 	if (key >= midKey)
 		sibling.insert(key,pid);
 	else
@@ -636,7 +659,6 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
     
     return 0;
 }
-
 
 /*
  * Given the searchKey, find the child-node pointer to follow and
@@ -648,34 +670,29 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
 RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
 {
     // FIXME: Maybe needs error checking
-    // [Done. Should work]
-    int offSet = sizeof(int)*2; // location to insert key
-    
-    char* pointer = &buffer[0]+sizeof(int)+sizeof(PageId);	//First key
-    
-	int compareKey = 0;	//storage for comparison
+
+    NonLeaf* myNonLeaf = (NonLeaf*)(buffer + sizeof(PageId));    // Start from the first key
     int numKey = getKeyCount();
     
-    //copy first key to compareKey for comparison. initial
-	memcpy(&compareKey, buffer+offSet, sizeof(int));
-//    printf("Comparekey: %d\n", compareKey);
-    
-    // Keep searching for the child pid
-    for (int x = 0; x < numKey; x++){
-        if (searchKey < compareKey){
-            memcpy(&pid, pointer-sizeof(PageId), sizeof(PageId));
-//            printf("NONLEAF PID FOUND: using pid: %d\n", pid);
-            return 0;
+    int x;
+    for (x = 0; x < numKey; x++){
+        
+        // Keep looking until you find a key greater than your searchkey
+        if ((myNonLeaf+x)->key > searchKey){
+            if (x == 0)
+                // If it's the first, we send the beginning pid
+                memcpy(&pid, buffer, sizeof(int));
+            else
+                pid = (myNonLeaf+x-1)->next;    // Go back one and return the pid
+            
+            return 0; // Success!
         }
-        // If search key >= compareKey
-        pointer += sizeRec;
-        memcpy(&compareKey, pointer, sizeof(int));
     }
-//    printf("NONLEAF PID NOT FOUND: using pid: %d\n", pid);
-    memcpy(&pid, pointer-sizeof(PageId), sizeof(int));
     
+    // If it doesn't find it, return the last PId
+    pid = (myNonLeaf+x-1)->next;
     
-	return 0;
+    return 0;
 
 }
 
@@ -688,32 +705,21 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
  */
 RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2)
 {
+    NonLeaf* myNonLeaf = (NonLeaf*)(buffer + sizeof(PageId));    // Start from the first key
     
-	char* pointer = &buffer[0] + sizeof(int);	//Pointing to the 1st element
-    
-	memcpy(pointer, &pid1, sizeof(PageId));	//Initialize first pageId
-	pointer += sizeof(PageId);	// Increment by that amount
-    
-	memcpy(pointer, &key, sizeof(int));	//Initialize the key
-	pointer += sizeof(int);	//Increment by that amount again
-    
-	memcpy(pointer, &pid2, sizeof(PageId));	//Create the 2nd PageId to insert behind the key
-    printf("ROOT: pid1: %d, key: %d, pid2: %d\n", pid1, key, pid2);
-    
-	pointer = &buffer[0];	//Modify Count
-    int count = 1;
-	memcpy(pointer,&count,sizeof(int));	//Incrementing count
-    
-    for (int x = 0; x < 1; x++){
-        int temp;
-        memcpy(&temp, buffer+sizeof(int)*2+x*sizeRec, sizeof(int));
-        printf("Root key %d: %d\n", x, temp);
+    for (int x = 0; x < sizeMax; x++){
+        // Empty it out
+        (myNonLeaf+x)->key = EMPTY;
+        (myNonLeaf+x)->next = EMPTY;
     }
     
-    // DEBUG
-    printf("\n");
+    myNonLeaf->key = key;
+    myNonLeaf->next = pid2;
+	memcpy(&pid1, buffer, sizeof(PageId));
+	
+//    PageId* temp = (PageId*)buffer; // Typecast the first pid from the buffer
+//    *temp = pid1;                   // Write pid1 to the beginning of the buffer
 	
 	return 0;
 
  }
-

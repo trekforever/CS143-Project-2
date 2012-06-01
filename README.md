@@ -1,5 +1,20 @@
 CS143-Project-2
 ===============
+May 30, 2012 by Jonathan Nguy
+ - Fixed a bug in load() with "WITH INDEX", which was seg faulting when testing.
+ - Completely redefined BTreeNode.cc, nodes are correct.
+ 	- Should've tested this sooner :'(
+ - Implemented BTreeIndex.cc's insert() function. (Not sure if > 2 height works.)
+ 	- Only "xlarge.del" creates a tree with height > 2.
+ 	- xsmall, small, medium, large all work nicely, I believe.
+ - Added test cases
+ - BTreeNode.cc still has all my debugging outputs.
+ - To test, run: ./clean.sh; ./temp.sh
+ 	- Edit the temp.sql file if you need to.
+ 
+May 29, 2012 by Xin Wei
+ - Implemented select + WITH INDEX option
+
 May 28, 2012 by Jonathan Nguy
  - Tried to implement insert
 	- Though, I didn't use the double link lists (kind of unsure what I could've done)

@@ -100,8 +100,8 @@ class BTreeIndex {
    * @param lvl[IN] level of tree
    * @return error code. 0 if no error
    */
-  RC insertHelp(int key, const RecordId& rid, PageId currPid, int& nKey, PageId& nPid, int lvl);
-    
+  RC insertHelp(int key, RecordId& rid, PageId pid, int& nKey, PageId& nPid, int lvl);
+
   /**
    * Find the leaf-node index entry whose key value is larger than or
    * equal to searchKey and output its location (i.e., the page id of the node
@@ -133,8 +133,6 @@ class BTreeIndex {
    * @return error code. 0 if no error
    */
   RC readForward(IndexCursor& cursor, int& key, RecordId& rid);
-    
-    int getSmallestKey();
 
  private:
   PageFile pf;         /// the PageFile used to store the actual b+tree in disk
@@ -148,8 +146,6 @@ class BTreeIndex {
   /// is opened again later.
 	char bufferArr[PageFile::PAGE_SIZE]; //ACt as buffer. (global variable, makes life easier)
 	char method; //keep track of mode (needed for close)
-    int smallKey;
-
 	DoubleLinkedList structure;
 };
 

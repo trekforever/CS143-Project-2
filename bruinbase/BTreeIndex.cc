@@ -9,6 +9,7 @@
  
 #include "BTreeIndex.h"
 #include "BTreeNode.h"
+#include <iostream>
 const int GLOBALpsize = PageFile::PAGE_SIZE;
 using namespace std;
 
@@ -75,7 +76,8 @@ int DoubleLinkedList::destory()
  */
 BTreeIndex::BTreeIndex()
 {
-    	rootPid = -1;
+    smallKey = EMPTY;
+    rootPid = EMPTY;
 	treeHeight = 0;	//initially 0 count. Needed to know whether reached leaf level
 }
 
@@ -148,100 +150,231 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
 {
     PageId newPid;
     BTNonLeafNode sib, nonLeaf; // sibling
-    BTLeafNode leaf; // QUESTION: When do constructors get called again?
-	//Gets called when you declare them, so right here ^
+    BTLeafNode leaf; 
     int newKey;
 	RC rc;
-    
+
     // If empty tree
     if (treeHeight == 0) {
-        // Increase tree height
-        treeHeight++;
         
         // Insert to the leaf
         leaf.insert(key, rid);
+//        printf("Inserted key: %d \n", key);
         
         // This is for hte return value
         rootPid = pf.endPid();
         
-        return leaf.write(rootPid, pf);
+        // Increase tree height
+        treeHeight++;
+        
+        rc = leaf.write(rootPid, pf);
     } else {
 		// FIXME: what's wrong with this? Doesn't compile.
-		RecordId tid; //Passing rid originally as a parameter. But rid
+//		RecordId tid = rid; //Passing rid originally as a parameter. But rid
 		// is a const RecordId&. The parameter expected is
 		// RecordId& (without const)
-         return insertHelp(key, tid, rootPid, newKey, newPid, 1);
+        rc = insertHelp(key, rid, rootPid, newKey, newPid, 1);
+
+//        rc = insertHelp(key, rid, rootPid, 1, newPid, newKey);
     }
-  
+
     // FIXME: Error checking?
+    if (smallKey == -1 || key < smallKey)
+        smallKey = key;
 
-    return 0; // Success
+    return rc; // Success
 }
 
-RC BTreeIndex::insertHelp(int key, RecordId& rid, PageId pid, int& nKey, PageId& nPid, int lvl)
+RC BTreeIndex::insertHelp(int key, const RecordId& rid, PageId currPid, int& nKey, PageId& nPid, int lvl)
 {
-	BTLeafNode leaf, sib; 					// Leaf node, sibling
-	BTNonLeafNode nonLeaf, nonLeafSib; 		// Nonleafnode / nonleafsibling
-	PageId sPid, sibPid;					// Split/Sibling pid
-	int sKey, midKey; 						// Sibling key, middle key
-	RC rc; 									// return value
-	
-	// Base case, where level is the tree height (leaf)
-	if (lvl == treeHeight){
-		leaf.read(pid, pf);
-		
-		// If insert isn't successful (full)
-		if (leaf.insert(key, rid) != 0){
-			// Insert and split
-			leaf.insertAndSplit(key, rid, sib, sKey);
-			
-			// Write the sibling node
-			sPid = pf.endPid();
-			
-			leaf.write(pid, pf);
-		} else { // Successful
-		
-			leaf.write(pid, pf);
-			
-			return 0; // Success
-		}
-	} else { // Else it's a non-leaf node
-		// Initialize nonLeaf
-		nonLeaf.initializeRoot(EMPTY, EMPTY, EMPTY);
-		nonLeaf.read(pid, pf);
-		nonLeaf.locateChildPtr(key, nextPid);
-		
-		// Recursively insert
-		rc = this->insertHelp(key, rid, nextPid, sPid, sKey, lvl+1);
-		
-		// If we had to split
-		if (rc == RC_NODE_FULL){
-			if (nonLeaf.insert(sKey, sPid) == 0) {
-				nonLeaf.write(pid, pf);
-				return rc;
-			} else {
-				// It's full
-				rc = RC_NODE_FULL;
-				
-				// Initialize
-				nonLeafSib.initializeRoot(EMPTY, EMPTY, EMPTY);
-				
-				// Insert and split
-				nonLeaf.insertAndSplit(sKey, sPid, nonLeafSib, midKey);
-				
-				sibPid = pf.endPid();
-				nonLeafSib.write(sibPid, pf);
-				
-			}
-		} else 
-			return rc;
-	}
-	
-	nKey = sKey;	// Set return key
-	nPid = nPid;	// Set return pid
-	
-	return rc;
+    BTNonLeafNode myRoot;
+//    myRoot.read(rootPid, pf);
+                
+    // BASE CASE: Leaf node
+    if (lvl == treeHeight)
+    {
+        // Read the node information
+        BTLeafNode ln;
+        ln.read(currPid, pf); 
+        
+        // Attempt to insert
+        RC rc = ln.insert(key, rid);
+        
+        // Successful insert (node not full)
+        if (rc == 0)
+        {
+            // Write to page
+            ln.write(currPid, pf);
+            
+            // DEBUG 
+            //printf("BTreeIndex.insert: Inserted key = %d at pid = %d. TreeHeight = %d. rc = %d.\n", key, currPid, treeHeight, rc);
+            
+            return rc;
+        } else // Node full
+        {
+            // Create a sibling node
+            BTLeafNode sn;
+            
+            // Return key from insertAndSplit            
+            int sibKey;
+            
+//            printf("SPLITTED!\n");
+            
+            // Insert and split
+            ln.insertAndSplit(key, rid, sn, sibKey);
+            
+            // Write the sibling node
+            PageId sibPid = pf.endPid();
+            sn.write(sibPid, pf);	  
+            
+            // Set next pointer after split
+            ln.setNextNodePtr(sibPid);
+            
+            // Write the leaf node
+            ln.write(currPid, pf);
+            
+            // Set return
+            nPid = sibPid;
+            nKey = sibKey;
+            
+            // If this was a root, we now have to create a new root
+            if (lvl == 1)
+            {
+                rc = myRoot.initializeRoot(currPid, sibKey, sibPid);
+                        
+                // Set the new root pid
+                rootPid = pf.endPid();
+                
+                // Write the new root
+                myRoot.write(rootPid, pf);
+                
+                // Set the new tree height
+                treeHeight++;
+                
+//                rc = this->newRoot(sibKey, currPid, sibPid);                    // DEBUG 
+                printf("INFO: Created a new root. Current Height = %d.\n", treeHeight);
+                printf ("ROOT INFO: currPid: %d, sibKey: %d, sibPid: %d, rootPid: %d\n", currPid, sibKey, sibPid, rootPid);
+            }     
+            
+            return rc; // Inserted and splitted
+            
+        } // End else: Node full (leaf node)
+        
+    } else // RECURSIVE CASE: Non leaf node, need to traverse
+    {
+//        printf("Something new to insert in pid %d\n", currPid);
+        
+        // Initialize and read
+        BTNonLeafNode n;
+        
+        // If it's in a non leaf/ non root node.
+        if (lvl == 1)
+            myRoot.read(rootPid, pf);
+        else
+            n.read(currPid, pf);
+        
+        PageId childPid, splitPid;
+        int splitKey;
+        
+        if (lvl == 1) // rootNode
+            myRoot.locateChildPtr(key, childPid);
+        else { // nonleaf, nonroot node
+            n.locateChildPtr(key, childPid);
+//            printf("Located child pointer for nonleaf, nonroot: %d\n", childPid);
+//            printf("Current level: %d, current height: %d\n", level, treeHeight);
+        }
+        
+        // RECURSIVE ITERATION
+        RC rc = this->insertHelp(key, rid, childPid, splitKey, splitPid, lvl+1);
+        
+        // This means we had to split the node below
+        if (rc == RC_NODE_FULL)
+        {
+            printf("WOO INSERTED AND SPLITTED!\n");
+            printf("splitKey: %d, splitPid: %d\n", splitKey, splitPid);
+            
+            // Attempt to insert using the return information
+            if (lvl == 1) // if root node, insert into root
+                rc = myRoot.insert(splitKey, splitPid);
+            else // if nonleaf, nonroot, insert into that node
+                rc = n.insert(splitKey, splitPid);
+            
+            // Success
+            if (rc == 0)
+            {
+                // Write to either the root or the nonleaf, non-root
+                if (lvl == 1)
+                    myRoot.write(currPid, pf);
+                else 
+                    n.write(currPid, pf);
+                return rc;
+                
+            } else // Full node
+            {
+                printf("I shouldn't be here. \n");
+                
+//                RC rc = RC_NODE_FULL;
+                // Create sibling and initialize
+                BTNonLeafNode sn;
+                
+                // InsertAndSplit
+                int midKey;
+                
+                printf("Current level after nonleaf node split: %d\n", lvl);
+                if (lvl == 1) // split root
+                    myRoot.insertAndSplit(splitKey, splitPid, sn, midKey);
+                else{ // split nonleaf
+                    printf("WHY U NO WORKZ!\n");
+                    n.insertAndSplit(splitKey, splitPid, sn, midKey);
+                }
+                    
+                printf("Inserted and splitted root\n");
+                
+                // Write the sibling to endPid
+                PageId sibId = pf.endPid();
+                
+                sn.write(sibId, pf);		
+                
+                if (lvl == 1)
+                    myRoot.write(currPid, pf);
+                else
+                // Write the node that was split
+                    n.write(currPid, pf);
+                
+                // If this is a root node
+                if (lvl == 1)
+                {
+                    rc = myRoot.initializeRoot(currPid, midKey, sibId);
+                    
+                    // Set the new root pid
+                    rootPid = pf.endPid();
+                    
+                    // Write the new root
+                    myRoot.write(rootPid, pf);
+                    
+                    // Set the new tree height
+                    treeHeight++;
+                    
+                    // DEBUG 
+                    printf("INFO: Created a new root, wow! Current Height = %d.\n", treeHeight);
+                }
+                
+                // Set return info
+                nPid = sibId;
+                nKey = midKey;
+                
+                return rc;
+            }
+        } else 
+        {
+            return rc;
+        }
+        return rc;
+    } 
+    
+    return 0;
 }
+
 /*
  * Find the leaf-node index entry whose key value is larger than or 
  * equal to searchKey, and output the location of the entry in IndexCursor.
@@ -264,24 +397,33 @@ RC BTreeIndex::insertHelp(int key, RecordId& rid, PageId pid, int& nKey, PageId&
 RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
 {
 	//Base case is when height is 0 or 1
-    if(treeHeight==0)
-	{
-		rootPid = 1;	//set rootpid
-		cursor.pid = 1;	//the cursor pid will be 1
-		cursor.eid = 0; //the index for cusor will be 0 because it is the root
-		treeHeight++;
-	}
+//    if(treeHeight==0)
+//	{
+//		rootPid = 1;	//set rootpid
+//		cursor.pid = 1;	//the cursor pid will be 1
+//		cursor.eid = 0; //the index for cusor will be 0 because it is the root
+//		treeHeight++;
+//	}
 	if(treeHeight==1)
 	{
-		int indexCursor = 0;
+		int searchEid = 0;
 		BTLeafNode temp;
+        
 		if(temp.read(rootPid,pf) != 0)
 			return RC_FILE_READ_FAILED;	//Unable to read
-		if(temp.locate(searchKey,indexCursor) != 0)
+        
+        printf("Starting search for key %d, eid %d. \n", searchKey, searchEid);
+        
+		if(temp.locate(searchKey, searchEid) != 0){
+            printf("couldn't find!\n");
 			return RC_NO_SUCH_RECORD;	//Unable to find
+        }
+        
+        printf("Finished search. \n");
+        
 		//Found and stored in IndexCusor
 		cursor.pid = rootPid;
-		cursor.eid = indexCursor;
+		cursor.eid = searchEid;
 	}
 	else
 	{
@@ -306,8 +448,10 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
 		cursor.pid = nextPid;
 		cursor.eid = 0;
 	}
+    
 	return 0;
 }
+
 
 /*
  * Read the (key, rid) pair at the location specified by the index cursor,
@@ -355,4 +499,9 @@ RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
 
 	
     return 0;
+}
+
+
+int BTreeIndex::getSmallestKey(){
+    return smallKey;
 }

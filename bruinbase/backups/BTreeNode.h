@@ -103,26 +103,6 @@ class BTLeafNode {
     */
     RC write(PageId pid, PageFile& pf);
 
-    void printLeafNode();
-    
-    /**
-     * Converts 12 bytes from buffer starting at index into a leaf entry.
-     * @param buffer[IN] the character buffer to read from
-     * @param index[IN] the index to begin reading from
-     * @param key[OUT] the key to write to
-     * @param rid[OUT] the rid to write to
-     */  
-    static void convertToLeafEntry(char* buffer, int index, int& key, RecordId& rid);
-    
-    /**
-     * Converts a leaf entry into a char array of length 12.
-     * @param key[IN] the key to read from
-     * @param rid[IN] the RecordId to read from
-     * @param buffer[OUT] the char buffer to write to
-     */ 
-    static void convertToChar(int key, RecordId rid, char* buffer);
-
-    
   private:
    /**
     * The main memory buffer for loading the content of the disk page 
@@ -205,17 +185,6 @@ class BTNonLeafNode {
     * @return the number of keys in the node
     */
     int getKeyCount();
-    
-    /**
-     * Find the index entry whose key value is larger than or equal to searchKey
-     * and output the eid (entry id) whose key value &gt;= searchKey.
-     * Remember that keys inside a B+tree node are sorted.
-     * @param searchKey[IN] the key to search for.
-     * @param eid[OUT] the entry number that contains a key larger              
-     *                 than or equalty to searchKey.
-     * @return 0 if successful. Return an error code if there is an error.
-     */
-    RC locate(int searchKey, int& eid);
 
    /**
     * Read the content of the node from the page pid in the PageFile pf.
@@ -245,6 +214,14 @@ class BTNonLeafNode {
 	int sizeTot;	// Total size of a record
     int sizeMax;    // Max NonLeaf structs
 	int sizeCount;	// Size of the number of keys, int
+    
+    // A struct for each element in a nonleafnode.
+    // "Next" is a pointer to the next PageId
+    // This is going to be the main data structure we work with.
+    typedef struct{
+        int key;
+        PageId next;
+    } NonLeaf;
 
 }; 
 
