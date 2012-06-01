@@ -1,5 +1,11 @@
 CS143-Project-2
 ===============
+May 31, 2012 by Jonathan Nguy
+ - Seems like everything works with other SqlEngine.cc (xlarge not tested, which is height of 3)
+ - WHERE works with things such a =, <, >, <>. 
+ 	- Probably have to test other cases.
+ - ALSO: TAKE OUT printf's USED FOR DEBUGGING.
+ 
 May 30, 2012 by Jonathan Nguy
  - Fixed a bug in load() with "WITH INDEX", which was seg faulting when testing.
  - Completely redefined BTreeNode.cc, nodes are correct.

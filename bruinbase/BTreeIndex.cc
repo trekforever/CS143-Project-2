@@ -13,64 +13,6 @@
 const int GLOBALpsize = PageFile::PAGE_SIZE;
 using namespace std;
 
-Node::Node(PageId pid) {
-	//Set pid
-	this->pid = pid;
-}
-
-PageId Node::getPid(){
-	//Return pid value
-	return this->pid;
-}
-
-//Linked List Structure
-DoubleLinkedList::DoubleLinkedList() {
-	//First the list is empty
-	head = 0;
-	tail = 0;
-	size = 0;
-
-}
-
-int DoubleLinkedList::insert(PageId pid)
-{
-	if(size==0)
-	{
-		//Empty list
-		head = new Node(pid);
-		tail = head;	//tail is the head
-		tail->next = NULL;
-		tail->last = NULL;
-		size++;
-	}
-	else
-	{	
-		//We create a new node at the end
-		Node* newNode = new Node(pid);
-		//Set the existing tail node cto point to this
-		tail->next = newNode;
-		//Have this node point to NULL (since now it is at the end)
-		newNode->next = NULL;
-		//Have this last ptr point to the one before, which is tail
-		newNode->last = tail;
-		//Now make tail the new node we just created
-		tail = newNode;
-
-	}
-}
-
-int DoubleLinkedList::destory()
-{
-	while(head!=tail)
-	{
-		Node* tobedeleted = tail->last;
-		delete tail;
-		tail = tobedeleted;
-	}
-	delete head;
-	return 0;	//success
-}
-
 /*
  * BTreeIndex constructor
  */
@@ -163,19 +105,20 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
         
         // This is for hte return value
         rootPid = pf.endPid();
+        if (rootPid == 0)
+            rootPid++;
         
         // Increase tree height
         treeHeight++;
         
+        // Write the rootPid
+        printf("rootPid = %d", rootPid);
         rc = leaf.write(rootPid, pf);
+        
     } else {
-		// FIXME: what's wrong with this? Doesn't compile.
-//		RecordId tid = rid; //Passing rid originally as a parameter. But rid
-		// is a const RecordId&. The parameter expected is
-		// RecordId& (without const)
+        
         rc = insertHelp(key, rid, rootPid, newKey, newPid, 1);
 
-//        rc = insertHelp(key, rid, rootPid, 1, newPid, newKey);
     }
 
     // FIXME: Error checking?
@@ -397,58 +340,48 @@ RC BTreeIndex::insertHelp(int key, const RecordId& rid, PageId currPid, int& nKe
 RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
 {
 	//Base case is when height is 0 or 1
-//    if(treeHeight==0)
-//	{
-//		rootPid = 1;	//set rootpid
-//		cursor.pid = 1;	//the cursor pid will be 1
-//		cursor.eid = 0; //the index for cusor will be 0 because it is the root
-//		treeHeight++;
-//	}
-	if(treeHeight==1)
+    if(treeHeight==0)
 	{
-		int searchEid = 0;
-		BTLeafNode temp;
-        
-		if(temp.read(rootPid,pf) != 0)
-			return RC_FILE_READ_FAILED;	//Unable to read
-        
-        printf("Starting search for key %d, eid %d. \n", searchKey, searchEid);
-        
-		if(temp.locate(searchKey, searchEid) != 0){
-            printf("couldn't find!\n");
-			return RC_NO_SUCH_RECORD;	//Unable to find
-        }
-        
-        printf("Finished search. \n");
-        
-		//Found and stored in IndexCusor
-		cursor.pid = rootPid;
-		cursor.eid = searchEid;
-	}
-	else
-	{
-		BTNonLeafNode nonleaf;
-		if(!nonleaf.read(rootPid, pf) != 0)
-			return RC_FILE_READ_FAILED;
-		
-		for(int i = 1; i < treeHeight; i++)
-		{
-			//We want to insert the next pid to our linked list
-			if(i==1)
-				structure.insert(rootPid);
-			else
-				structure.insert(nextPid);
-			if(nonleaf.locateChildPtr(searchKey,nextPid) != 0)
-				return RC_NO_SUCH_RECORD;
-			else if(nonleaf.read(nextPid,pf) != 0)
-				return RC_FILE_READ_FAILED;
-		}
-
-		//At this point, we located the nextPid
-		cursor.pid = nextPid;
-		cursor.eid = 0;
+		rootPid = 1;	//set rootpid
+		cursor.pid = 1;	//the cursor pid will be 1
+		cursor.eid = 0; //the index for cusor will be 0 because it is the root
+		treeHeight++;
 	}
     
+    PageId tempPid = rootPid;
+    
+    // Iterate until you reach leaf node
+    for (int x = 1; x < treeHeight; x++){
+        BTNonLeafNode nln;
+        if (nln.read(tempPid, pf) != 0)
+            printf("Something went wrong.. \n");
+        
+        if (nln.locateChildPtr(searchKey, tempPid) != 0) {
+            printf("Something else went wrong.. \n");
+        }
+    }
+    
+    int searchEid = 0;
+    BTLeafNode temp;
+    printf("Before reading.. \n");
+    RC rc = temp.read(tempPid, pf);
+    printf("After reading.. \n");
+    
+    if(rc != 0){            
+        printf("Fail reading.. \n");
+        return RC_FILE_READ_FAILED;	//Unable to read
+    }
+    
+    if(temp.locate(searchKey, searchEid) != 0){
+        printf("Fail locate.. \n");
+        return RC_NO_SUCH_RECORD;	//Unable to find
+    }
+    
+    printf("Located.. \n");
+    //Found and stored in IndexCusor
+    cursor.pid = tempPid;
+    cursor.eid = searchEid;
+    printf("Returned!! \n");
 	return 0;
 }
 
@@ -500,7 +433,6 @@ RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
 	
     return 0;
 }
-
 
 int BTreeIndex::getSmallestKey(){
     return smallKey;

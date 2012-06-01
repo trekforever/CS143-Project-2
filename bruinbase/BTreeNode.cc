@@ -148,12 +148,12 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
 
 //    printf("Key 1: %d\n", temp);
 //    if (numKey > 30)
-//    printf("Key added: %d\n", temp);
-//    for (int x = 0; x < numKey+1; x++){    
-//        memcpy(&temp, buffer+sizeof(int)+x*sizeRec+sizeof(RecordId), sizeof(int));
-//        printf("Key %d: %d\n", x, temp);
-//    }
-//    printf("\n");
+    printf("Key added: %d\n", temp);
+    for (int x = 0; x < numKey+1; x++){    
+        memcpy(&temp, buffer+sizeof(int)+x*sizeRec+sizeof(RecordId), sizeof(int));
+        printf("Key %d: %d\n", x, temp);
+    }
+    printf("\n");
     
 	return 0; 
 }
@@ -181,6 +181,8 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
      *  Set the sibling's next pointer
      *  Insert the record
      */
+    
+    // [Done. Should work.]
 	sizeTot = getKeyCount()*sizeRec;                    // Total Size of a leafnode
     
     // Check size, we shouldn't be splitting here
@@ -277,7 +279,6 @@ RC BTLeafNode::locate(int searchKey, int& eid)
 	{
 		//Copy it to temp storage for comparison
 		memcpy(&curKey, pointer, sizeof(int));
-		
 		if(curKey >= searchKey)
 		{
 			eid = x;	//Found it!
@@ -324,9 +325,12 @@ RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid)
 PageId BTLeafNode::getNextNodePtr()
 {
     /* General idea:
-     *  Get the next pointer
+     *  Get the next pointer (last 4 bytes)
      */
+    
+    sizeTot = sizeMax*sizeRec;
     char* pointer = &buffer[0] + sizeCount + sizeTot;
+    
 	//Set the pointer to point to the pageID at the end of the leaf
 	
 	PageId nextPage;
@@ -344,8 +348,10 @@ PageId BTLeafNode::getNextNodePtr()
 RC BTLeafNode::setNextNodePtr(PageId pid)
 { 
     /* General idea:
-     *  Set the next pointer
+     *  Set the next pointer (last 4 bytes)
      */
+    
+    sizeTot = sizeMax*sizeRec;
     
     char* pointer = &buffer[0] + sizeCount + sizeTot;
 	//Set the pointer to point to the pageID element in the leaf
