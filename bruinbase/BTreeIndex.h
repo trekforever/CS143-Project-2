@@ -29,35 +29,6 @@ typedef struct {
     int     eid;  
 } IndexCursor;
 
-/*
- * Since we are allowed to use STL, we shall implement the structure of the BTreeIndex 
- * as a DoubleLinkedList. The DoubleLinkedList will simply consist of nodes.
- * The node structure is defined as below:
- */
-
-// Node can be leaf or non-leaf
-class Node {
-public:
-	Node(PageId pid);
-	PageId getPid(); //public function to retrieve the pageID
-	PageId pid;	//pid of the node (stored from constructor)
-	Node* next;	//Next Node
-	Node* last;	//Last node
-    
-};
-
-class DoubleLinkedList {
-public:
-	DoubleLinkedList();
-	int insert(PageId pid);	// Insert to the linked list
-	int destory();	//Destory List
-private:
-	Node* head;
-	Node* tail;
-	int size;
-    
-};
-
 /**
  * Implements a B-Tree index for bruinbase.
  * 
@@ -134,8 +105,6 @@ public:
      */
     RC readForward(IndexCursor& cursor, int& key, RecordId& rid);
     
-    int getSmallestKey();
-    
 private:
     PageFile pf;         /// the PageFile used to store the actual b+tree in disk
     
@@ -149,7 +118,6 @@ private:
     
 	char bufferArr[PageFile::PAGE_SIZE]; //ACt as buffer. (global variable, makes life easier)
 	char method; //keep track of mode (needed for close)
-    int smallKey;
 };
 
 #endif /* BTREEINDEX_H */

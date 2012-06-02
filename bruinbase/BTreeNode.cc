@@ -148,12 +148,12 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
 
 //    printf("Key 1: %d\n", temp);
 //    if (numKey > 30)
-    printf("Key added: %d\n", temp);
-    for (int x = 0; x < numKey+1; x++){    
-        memcpy(&temp, buffer+sizeof(int)+x*sizeRec+sizeof(RecordId), sizeof(int));
-        printf("Key %d: %d\n", x, temp);
-    }
-    printf("\n");
+//    printf("Key added: %d\n", temp);
+//    for (int x = 0; x < numKey+1; x++){    
+//        memcpy(&temp, buffer+sizeof(int)+x*sizeRec+sizeof(RecordId), sizeof(int));
+//        printf("Key %d: %d\n", x, temp);
+//    }
+//    printf("\n");
     
 	return 0; 
 }
@@ -248,7 +248,7 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
 	else
 		insert(key,rid);
 		
-    printf("\n");
+//    printf("\n");
     return 0; // Success
 	
 }
@@ -361,30 +361,6 @@ RC BTLeafNode::setNextNodePtr(PageId pid)
 	
 	// Error checking
 }
-
-
-
-void BTLeafNode::convertToLeafEntry(char* buffer, int index, int& key, RecordId& rid)
-{
-    int* bint = (int*) buffer;
-    rid.pid = *(bint+index/sizeof(int));
-    rid.sid = *(bint+index/sizeof(int)+1);
-    key = *(bint+index/sizeof(int)+2);
-}
-
-void BTLeafNode::convertToChar(int key, RecordId rid, char* buf)
-{
-    int* bint = (int*) buf;
-    *(bint) = rid.pid;
-    *(bint+1) = rid.sid;
-    *(bint+2) = key;
-    buf = (char*) bint;
-}
-
-
-
-
-
 
 
 
@@ -526,7 +502,7 @@ RC BTNonLeafNode::insert(int key, PageId pid)
     int offSet = sizeof(int)*2 + eid * sizeRec; // location to insert key
     int newOffSet = offSet + sizeof(int); // location to insert pid
     
-    printf("NONLEAF: eid: %d, key: %d, offset: %d, newoffset: %d\n", eid, key, offSet, newOffSet);
+//    printf("NONLEAF: eid: %d, key: %d, offset: %d, newoffset: %d\n", eid, key, offSet, newOffSet);
     
     memcpy(&buffer[0]+offSet, &key, sizeof(int));
 	memcpy(&buffer[0]+newOffSet, &pid, sizeof(PageId));
@@ -536,17 +512,17 @@ RC BTNonLeafNode::insert(int key, PageId pid)
 	int newCount = getKeyCount() + 1;	//Increment count
 	memcpy(pointer,&newCount,sizeof(int));
 	
-    // DEBUG
-    int temp;
-    PageId tPid;
-    memcpy(&tPid, buffer+sizeof(int), sizeof(int));
-    printf("NONLEAF: First pid: %d\n", tPid);
-    for (int x = 0; x < numKey+1; x++){    
-        memcpy(&temp, buffer+sizeof(int)+sizeof(PageId)+x*sizeRec, sizeof(int));
-        memcpy(&tPid, buffer+sizeof(int)+(x+1)*sizeRec, sizeof(int));
-        printf("NONLEAF: Key %d: %d, pid: %d\n", x, temp, tPid);
-    }
-    printf("\n");
+//    // DEBUG
+//    int temp;
+//    PageId tPid;
+//    memcpy(&tPid, buffer+sizeof(int), sizeof(int));
+//    printf("NONLEAF: First pid: %d\n", tPid);
+//    for (int x = 0; x < numKey+1; x++){    
+//        memcpy(&temp, buffer+sizeof(int)+sizeof(PageId)+x*sizeRec, sizeof(int));
+//        memcpy(&tPid, buffer+sizeof(int)+(x+1)*sizeRec, sizeof(int));
+//        printf("NONLEAF: Key %d: %d, pid: %d\n", x, temp, tPid);
+//    }
+//    printf("\n");
     
 	return 0;
     
@@ -581,19 +557,19 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
     
     // Check size, we shouldn't be splitting here
     if (numKey < sizeMax){
-        printf("Why am I here 1?\n");
+//        printf("Why am I here 1?\n");
         return RC_NODE_FULL; 
     }
     
 	// Check if sibling is empty before it's called
 	if (sibling.getKeyCount() > 0){
-        printf("Why am I here 2?\n");
+//        printf("Why am I here 2?\n");
 		return RC_NODE_FULL; 
     }
     
     int lastPid = sizeMax / 2; // Number of nodes left in original node after split
     int keysToCopy = numKey - lastPid;
-    printf("NONLEAF: lastpid: %d, keystocopy: %d\n", lastPid, keysToCopy);
+//    printf("NONLEAF: lastpid: %d, keystocopy: %d\n", lastPid, keysToCopy);
     
     PageId bPid = EMPTY;
     int bKey = EMPTY;
@@ -608,11 +584,11 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
     PageId tempPid;
     memcpy(&tempKey, buffer+sizeCount*2+lastPid*sizeRec, sizeof(int));
     memcpy(&tempPid, buffer+sizeCount*2+lastPid*sizeRec+sizeof(int), sizeof(PageId));
-    printf("Initialize tempKey: %d, tempPid: %d\n", tempKey, tempPid);
+//    printf("Initialize tempKey: %d, tempPid: %d\n", tempKey, tempPid);
     sibling.initializeRoot(midPid, tempKey, tempPid);
     
     memcpy(&midKey, buffer+sizeCount*2+lastPid*sizeRec, sizeof(int));
-    printf("NONLEAF: midkey: %d\n", midKey);
+//    printf("NONLEAF: midkey: %d\n", midKey);
     
     // Copy from old buffer into sibling.
     for (int x = 1; x < keysToCopy; x++){
@@ -620,8 +596,8 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
 		memcpy(&tempKey, buffer+sizeCount*2+(lastPid+x)*sizeRec, sizeof(int));
         memcpy(&tempPid, buffer+sizeCount*2+(lastPid+x)*sizeRec+sizeof(int), sizeof(PageId));
 		
-        printf("Still splitting nonleaf...!\n");
-        printf("NONLEAF: Inserted: %d into sibling!\n", tempKey);
+//        printf("Still splitting nonleaf...!\n");
+//        printf("NONLEAF: Inserted: %d into sibling!\n", tempKey);
         
 		// Insert it into the sibling
 		sibling.insert(tempKey, tempPid);
@@ -704,7 +680,7 @@ RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2)
 	pointer += sizeof(int);	//Increment by that amount again
     
 	memcpy(pointer, &pid2, sizeof(PageId));	//Create the 2nd PageId to insert behind the key
-    printf("ROOT: pid1: %d, key: %d, pid2: %d\n", pid1, key, pid2);
+//    printf("ROOT: pid1: %d, key: %d, pid2: %d\n", pid1, key, pid2);
     
 	pointer = &buffer[0];	//Modify Count
     int count = 1;
@@ -713,11 +689,11 @@ RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2)
     for (int x = 0; x < 1; x++){
         int temp;
         memcpy(&temp, buffer+sizeof(int)*2+x*sizeRec, sizeof(int));
-        printf("Root key %d: %d\n", x, temp);
+//        printf("Root key %d: %d\n", x, temp);
     }
     
     // DEBUG
-    printf("\n");
+//    printf("\n");
 	
 	return 0;
 

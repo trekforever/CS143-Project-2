@@ -1,22 +1,22 @@
 Jonathan Nguy
+jpnguy@ucla.edu
 603 799 761
 
 Xin Wei
+xin.wei@ucla.edu
 003 786 672
 
-Project 2b
-Implemented bTreeNode.cc, but not have 100% tested it.
+Project 2D
+Reason for probable 50% change in code in BTreeNode and BTreeIndex:
+1. We changed a lot of our functions in BTreeNode.cc because they weren't working correctly.
+2. We cleaned up the code (by cleaning up uncessary comments and old code)
+3. We changed BTreeIndex.cc because like #1, we found many bugs in our code which didn't work.
+4. Also, a lot of newlines / indentation may cause the 50% difference.
 
-Everything compiles.
+Final project turned in.
 
-There's a possibility that we would have to edit this a little for part C/D.
+Tested on xsmall, small, medium, large, xlarge
 
-Project 2a
-We assumed that WITH INDEX was false. 
+Not 100% sure a 3 level tree works correctly (xlarge).
 
-We were able to get everything copied and diff'ing our .tbl with the movie.tbl, we get nothing as output.
-
-I'm not sure if we were supposed to do error checking, and what were we supposed to do if it failed.
-There were a few error checking we did and we returned based off of Bruinbase.h.
-
-Revised 5/21/2012
+Revised 6/1/2012

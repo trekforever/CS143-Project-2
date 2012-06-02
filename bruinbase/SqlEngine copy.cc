@@ -293,7 +293,8 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
 					bool temp = false;
 					if(noteql1)
 						for(int i=0; i<keyNotEqual.size(); i++)
-							if(key == keyNotEqual[i])								temp = true;
+							if(key == keyNotEqual[i])
+                                temp = true;
 					if(temp)
 						continue;
 						
@@ -318,7 +319,8 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
 					temp = false;
 					if(noteql2)
 						for(int i=0; i<NotEqualV2.size(); i++)
-							if(value <= NotEqualV2[i]->value)								temp = true;
+							if(value <= NotEqualV2[i]->value)
+                                temp = true;
 					if(temp)
 						continue;
 

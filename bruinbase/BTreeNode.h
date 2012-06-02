@@ -103,8 +103,6 @@ class BTLeafNode {
     */
     RC write(PageId pid, PageFile& pf);
 
-    void printLeafNode();
-    
     /**
      * Converts 12 bytes from buffer starting at index into a leaf entry.
      * @param buffer[IN] the character buffer to read from
